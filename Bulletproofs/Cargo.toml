@@ -1,0 +1,24 @@
+[package]
+name = "bulletproofs_bench"
+version = "0.1.0"
+edition = "2021"
+default-run = "bulletproofs_bench"
+
+[dependencies]
+ark-bls12-381 = "0.4"
+ark-bn254      = "0.4"
+ark-bls12-377  = "0.4"
+ark-ec         = "0.4"
+ark-ff         = "0.4"
+ark-std        = "0.4"
+sha2           = "0.10"
+digest         = "0.10"
+serde          = { version = "1", features = ["derive"] }
+serde_json     = "1"
+
+[[bin]]
+name = "bench_bulletproofs"
+path = "src/bench_bulletproofs.rs"
+
+[profile.release]
+opt-level = 3
