@@ -1,4 +1,3 @@
-// src/bench_single.rs
 // Run: cargo run --release --bin bench_single
 // Outputs: single_point_results.json
 

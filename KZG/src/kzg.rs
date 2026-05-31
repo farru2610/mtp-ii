@@ -35,6 +35,8 @@ impl <E:Pairing> KZG<E> {
         self.g2_tau = self.g2.mul(secret);
     }
 
+
+    //Simple MSM 
     pub fn commit(&self, poly: &[E::ScalarField]) -> E::G1 {
         assert!(poly.len() <= self.crs_g1.len());
 
@@ -45,6 +47,8 @@ impl <E:Pairing> KZG<E> {
         commitment
     }
 
+
+    //Pippenger's MSM
     // pub fn commit(&self, poly: &[E::ScalarField]) -> E::G1 {
     //     assert!(poly.len() <= self.crs_g1.len());
 
