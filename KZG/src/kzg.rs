@@ -2,7 +2,7 @@ use std::ops::Mul;
 use ark_ff::Field;
 use ark_ec::pairing::Pairing;
 use ark_ec::{VariableBaseMSM, CurveGroup};
-use crate::utils::{div, mul, evaluate, interpolate};
+use crate::utils::{div, mul, evaluate};
 
 pub struct KZG<E: Pairing> {
     pub g1: E::G1,
