@@ -40,7 +40,6 @@ impl<E: Pairing> MultilinearKZG<E> {
     /// Setup phase
     ///
     /// Builds the SRS from the toxic waste r, then r is dropped
-    /// at the end of this function and never stored.
     ///
     /// SRS in G1:  g1^{χ_b(r)}  for each b ∈ {0,1}^l
     /// SRS in G2:  g2^{r_i}     for each i = 0..l-1
@@ -78,7 +77,6 @@ impl<E: Pairing> MultilinearKZG<E> {
             );
         }
 
-        // r is a local parameter — it is dropped here.
         // The toxic waste never leaves this function.
     }
 
@@ -183,7 +181,6 @@ impl<E: Pairing> MultilinearKZG<E> {
     /// Open polynomial at point z.
     ///
     /// Returns (value, proofs) where proofs are G1 elements
-    /// computed without any knowledge of r.
     ///
     pub fn open(
         &self,

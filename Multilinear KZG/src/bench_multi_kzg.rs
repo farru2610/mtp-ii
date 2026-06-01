@@ -8,7 +8,6 @@ use std::ops::Mul;
 
 use crate::multilinear_kzg::MultilinearKZG;
 
-// ── Result record written to JSON ────────────────────────────────────────────
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MultiResult {
     pub curve:          String,
@@ -23,7 +22,7 @@ pub struct MultiResult {
     pub proof_bytes:    usize,   // num_vars * g1_point_bytes
 }
 
-// num_vars=16  →  poly_size=65536. Commented out to keep the run fast.
+// num_vars=16  →  poly_size=65536.
 const NUM_VARS: &[usize] = &[2, 4, 6, 8, 10, 12, 14];
 // const NUM_VARS: &[usize] = &[16, 18];
 
