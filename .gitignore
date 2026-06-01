@@ -1,1 +1,2 @@
-/target
+# Ignore all Rust target directories anywhere in the repo
+**/target/
