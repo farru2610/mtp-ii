@@ -1,5 +1,3 @@
-// Module — imported by main.rs and bench_bulletproofs.rs via `mod bulletproofs;`
-
 use ark_ec::{CurveGroup, VariableBaseMSM};
 use ark_ff::{Field, PrimeField};
 use sha2::{Digest, Sha256};
