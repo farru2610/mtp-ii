@@ -1,1 +1,1 @@
-/home/admin-pc/Desktop/MTP-II/target/release/bench_single: /home/admin-pc/Desktop/MTP-II/src/bench_single.rs /home/admin-pc/Desktop/MTP-II/src/bench_single_main.rs /home/admin-pc/Desktop/MTP-II/src/kzg.rs /home/admin-pc/Desktop/MTP-II/src/utils.rs
+/home/admin-pc/Desktop/MTP-II/KZG/target/release/bench_single: /home/admin-pc/Desktop/MTP-II/KZG/src/bench_single.rs /home/admin-pc/Desktop/MTP-II/KZG/src/bench_single_main.rs /home/admin-pc/Desktop/MTP-II/KZG/src/kzg.rs /home/admin-pc/Desktop/MTP-II/KZG/src/utils.rs

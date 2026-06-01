@@ -37,28 +37,28 @@ impl <E:Pairing> KZG<E> {
 
 
     //Simple MSM 
-    pub fn commit(&self, poly: &[E::ScalarField]) -> E::G1 {
-        assert!(poly.len() <= self.crs_g1.len());
-
-        let mut commitment = self.g1.mul(E::ScalarField::ZERO);
-        for i in 0..poly.len() {
-            commitment += self.crs_g1[i] * poly[i];
-        }
-        commitment
-    }
-
-
-    //Pippenger's MSM
     // pub fn commit(&self, poly: &[E::ScalarField]) -> E::G1 {
     //     assert!(poly.len() <= self.crs_g1.len());
 
-    //     let bases_affine: Vec<_> = self.crs_g1[..poly.len()]
-    //         .iter()
-    //         .map(|p| p.into_affine())
-    //         .collect();
-
-    //     E::G1::msm(&bases_affine, poly).unwrap()
+    //     let mut commitment = self.g1.mul(E::ScalarField::ZERO);
+    //     for i in 0..poly.len() {
+    //         commitment += self.crs_g1[i] * poly[i];
+    //     }
+    //     commitment
     // }
+
+
+    //Pippenger's MSM
+    pub fn commit(&self, poly: &[E::ScalarField]) -> E::G1 {
+        assert!(poly.len() <= self.crs_g1.len());
+
+        let bases_affine: Vec<_> = self.crs_g1[..poly.len()]
+            .iter()
+            .map(|p| p.into_affine())
+            .collect();
+
+        E::G1::msm(&bases_affine, poly).unwrap()
+    }
 
     pub fn open(&self, poly: &[E::ScalarField], point: E::ScalarField) -> E::G1 {
         // evaluate the polynomial at point
