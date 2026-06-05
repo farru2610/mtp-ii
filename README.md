@@ -1,6 +1,6 @@
 # MTP-II — Polynomial Commitment Schemes & Proof Systems
 
-Rust implementations of three cryptographic proof protocols, each benchmarked across three elliptic curves. Built using the [arkworks](https://arkworks.rs) ecosystem.
+Rust implementations of four cryptographic proof protocols, each benchmarked across three elliptic curves. Built using the [arkworks](https://arkworks.rs) ecosystem.
 
 ---
 
@@ -11,6 +11,10 @@ Rust implementations of three cryptographic proof protocols, each benchmarked ac
 | [KZG](KZG/) | Univariate polynomial commitment | Trusted (SRS) | **O(1)** — constant 1 point | O(1) — 2 pairings |
 | [Multilinear KZG](Multilinear%20KZG/) | Multilinear polynomial commitment | Trusted (SRS) | O(l) — l points | O(l) — l+1 pairings |
 | [Bulletproofs IPA](Bulletproofs/) | Inner product argument | Transparent | O(log n) | O(n) |
+| [Dory](dory-main/) | Multilinear polynomial commitment | Transparent | O(log n) | O(log n) |
+
+> **Note:** The Dory implementation is **not original code**. It is used here solely for benchmarking purposes.
+> Credit: Markos Georghiades (a16z) — [github.com/a16z/dory](https://github.com/a16z/dory), licensed Apache-2.0 / MIT.
 
 ---
 
@@ -52,13 +56,27 @@ MTP-II/
 │   ├── multilinear_kzg_results.json
 │   └── README.md
 │
-└── Bulletproofs/               ← Bulletproofs inner product argument
+├── Bulletproofs/               ← Bulletproofs inner product argument
+│   ├── src/
+│   │   ├── bulletproofs.rs     ← Core IPA protocol (generic over any curve)
+│   │   ├── bench_bulletproofs.rs← Multi-curve benchmark logic
+│   │   └── main.rs             ← Correctness test
+│   ├── bulletproofs_results.json
+│   └── README.md
+│
+└── dory-main/                  ← Dory transparent multilinear PCS — credit: Markos Georghiades (a16z/dory); used for benchmarking only
     ├── src/
-    │   ├── bulletproofs.rs     ← Core IPA protocol (generic over any curve)
-    │   ├── bench_bulletproofs.rs← Multi-curve benchmark logic
-    │   └── main.rs             ← Correctness test
-    ├── bulletproofs_results.json
-    └── README.md
+    │   ├── setup.rs            ← Prover/Verifier setup, Δ/χ preprocessing
+    │   ├── reduce_and_fold.rs  ← Protocol 14 prover + verifier state machines
+    │   ├── evaluation_proof.rs ← Full Eval-VMV-RE protocol, Fiat-Shamir wrapping
+    │   ├── proof.rs            ← Proof structs
+    │   ├── messages.rs         ← Per-round message types
+    │   ├── primitives/         ← Traits: fields, groups, pairings, transcript
+    │   ├── backends/arkworks/  ← Concrete curve backends (BLS12-381, BLS12-377, BN-254)
+    │   └── bin/bench_dory.rs   ← Multi-curve benchmark binary
+    ├── dory_results.json
+    ├── dory_plots/             ← Benchmark plots per curve
+    └── DORY_ANALYSIS.md        ← Theory ↔ code correspondence analysis
 ```
 
 ---
@@ -80,6 +98,7 @@ cargo run --release --bin <bench_binary>
 | `KZG/` | `bench_single` |
 | `Multilinear KZG/` | `bench` |
 | `Bulletproofs/` | `bench_bulletproofs` |
+| `dory-main/` | `bench_dory` |
 
 Results are printed to stdout and saved to a `.json` file in the project directory.
 
@@ -125,17 +144,33 @@ Transparent setup (no trusted party). Proof size and verify both grow with n.
 | BN-254 | 1 024 | 18.4 | 15.4 | 415.7 | 329.6 | 1 544 B |
 | BLS12-377 | 1 024 | 150.0 | 40.0 | 582.1 | 499.1 | 2 216 B |
 
+### Dory (dory_results.json)
+
+Transparent setup. Proof size and verify both grow as O(log n).
+**Implementation credit:** Markos Georghiades (a16z) — [github.com/a16z/dory](https://github.com/a16z/dory). Used here for benchmarking only; not original code.
+
+| Curve | n | Setup (ms) | Commit (ms) | Prove (ms) | Verify (ms) | Proof |
+|---|---|---|---|---|---|---|
+| BLS12-381 | 256 | 63.8 | 33.7 | 219.8 | 81.6 | 16 896 B |
+| BLS12-381 | 1 024 | 111.0 | 91.0 | 264.3 | 95.8 | 20 784 B |
+| BN-254 | 256 | 33.5 | 17.2 | 92.9 | 54.7 | 11 264 B |
+| BN-254 | 1 024 | 57.6 | 49.2 | 173.1 | 61.9 | 13 856 B |
+| BLS12-377 | 256 | 73.6 | 34.3 | 182.6 | 92.0 | 16 896 B |
+| BLS12-377 | 1 024 | 126.0 | 101.8 | 309.9 | 112.1 | 20 784 B |
+
+Verify grows only as O(log n) — significantly better than Bulletproofs' O(n) verifier. BN-254 is fastest across all metrics due to smaller field arithmetic.
+
 ---
 
 ## Protocol Comparison
 
-| | KZG | Multilinear KZG | Bulletproofs |
-|---|---|---|---|
-| **Trusted setup** | Yes | Yes | No |
-| **Proof size** | O(1) — 1 point | O(l) — l points | O(log n) |
-| **Prove cost** | O(d) MSM | O(l · 2^l) MSMs | O(n) group ops |
-| **Verify cost** | O(1) — 2 pairings | O(l) — l+1 pairings | O(n) group ops |
-| **Best for** | Univariate, SNARK backends | MLE-based SNARKs (Spartan, HyperPlonk) | No-setup range proofs |
+| | KZG | Multilinear KZG | Bulletproofs | Dory |
+|---|---|---|---|---|
+| **Trusted setup** | Yes | Yes | No | No |
+| **Proof size** | O(1) — 1 point | O(l) — l points | O(log n) | O(log n) |
+| **Prove cost** | O(d) MSM | O(l · 2^l) MSMs | O(n) group ops | O(n) MSMs + O(log n) pairings |
+| **Verify cost** | O(1) — 2 pairings | O(l) — l+1 pairings | O(n) group ops | O(log n) pairings |
+| **Best for** | Univariate, SNARK backends | MLE-based SNARKs (Spartan, HyperPlonk) | No-setup range proofs | Transparent MLE-based SNARKs |
 
 ---
 
