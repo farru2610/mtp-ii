@@ -1,0 +1,468 @@
+% ============================================================
+%  CHAPTER 6: Dory
+% ============================================================
+
+\chapter{Dory Polynomial Commitment}
+\label{chap:dory}
+
+Dory was introduced by Jonathan Lee in 2021~\cite{lee2021dory}. It is a
+\emph{transparent} polynomial commitment scheme, meaning it requires no
+trusted setup of any kind. The public parameters are two sequences of random
+group generators that anyone can produce from a public seed, with no secret
+toxic waste involved. Unlike Bulletproofs, which also avoids a trusted setup
+but pays a linear verification cost, Dory achieves $O(\log n)$ verification by
+exploiting bilinear pairings inside a reduce-and-fold argument. This places
+Dory between Bulletproofs and KZG on the transparency-efficiency spectrum.
+
+\section{Dory Construction}
+
+\subsection{Polynomial Representation}
+
+A multilinear polynomial $\tilde{f}$ in $\ell = \nu + \sigma$ variables is
+uniquely determined by its $n = 2^\ell$ evaluations on the Boolean hypercube.
+Dory represents these $n$ coefficients as a $2^\nu \times 2^\sigma$ matrix
+$\mathbf{M}$ (with $\nu \leq \sigma$). The evaluation point
+$\mathbf{z} \in \mathbb{F}_r^\ell$ is split into a left Lagrange vector
+$\mathbf{a} \in \mathbb{F}_r^{2^\nu}$ and a right Lagrange vector
+$\mathbf{b} \in \mathbb{F}_r^{2^\sigma}$, so that
+$\tilde{f}(\mathbf{z}) = \mathbf{a}^\top \mathbf{M}\, \mathbf{b}$.
+
+\subsection{Transparent Setup}
+
+The setup produces two public sequences of random group generators:
+\begin{align}
+    \Gamma_1 &= (g_{1,1},\; g_{1,2},\; \ldots,\; g_{1,n}) \in \mathbb{G}_1^n \\
+    \Gamma_2 &= (g_{2,1},\; g_{2,2},\; \ldots,\; g_{2,n}) \in \mathbb{G}_2^n
+\end{align}
+No secret is involved; anyone holding the same seed can regenerate them.
+The verifier setup additionally precomputes inner pairing products:
+\begin{align}
+    \Delta_L^{(k)} &=
+        \bigl\langle \Gamma_1[..2^{k-1}],\;\Gamma_2[..2^{k-1}]\bigr\rangle_T \\
+    \Delta_R^{(k)} &=
+        \bigl\langle \Gamma_1[2^{k-1}..2^k],\;\Gamma_2[..2^{k-1}]\bigr\rangle_T \\
+    \chi^{(k)} &=
+        \bigl\langle \Gamma_1[..2^k],\;\Gamma_2[..2^k]\bigr\rangle_T
+\end{align}
+where $\langle \mathbf{u},\mathbf{v}\rangle_T = \sum_i e(u_i, v_i) \in
+\mathbb{G}_T$ is the inner pairing product. These are built incrementally as
+$\chi^{(k)} = \chi^{(k-1)} + \langle \Gamma_1[2^{k-1}..2^k],\,
+\Gamma_2[2^{k-1}..2^k]\rangle_T$, costing $O(n)$ pairings in total.
+
+\subsection{Commitment}
+
+Dory uses a two-tier AFGHO homomorphic commitment. Each row $i$ of
+$\mathbf{M}$ is first committed in $\mathbb{G}_1$:
+\begin{equation}
+    c_i = \mathrm{MSM}\!\left(\Gamma_1[..2^\sigma],\; \mathbf{M}[i,:]\right)
+        = \Biggl[\sum_{j=0}^{2^\sigma-1} M_{ij}\cdot g_{1,j}\Biggr]_1
+\end{equation}
+The $2^\nu$ row commitments are then folded into a single $\mathbb{G}_T$
+element:
+\begin{equation}
+    C = e\!\Bigl(\mathrm{MSM}(c_0,\ldots,c_{2^\nu-1};\;\Gamma_2[..2^\nu]),\;
+    g_{2,\mathrm{fin}}\Bigr) \in \mathbb{G}_T
+\end{equation}
+The commitment is a single $\mathbb{G}_T$ element and is linearly homomorphic
+in the polynomial coefficients.
+
+\subsection{Evaluation Proof}
+
+To prove $\tilde{f}(\mathbf{z}) = v$, the prover first sends a VMV
+(vector-matrix-vector) message consisting of three elements:
+\begin{itemize}
+    \item $C_q = e\!\left(\mathrm{MSM}(\mathbf{T}', \mathbf{a}),\;
+          g_{2,\mathrm{fin}}\right)$: a commitment to the partial inner
+          product, where $\mathbf{T}'$ are the row commitments evaluated at
+          the right part of $\mathbf{z}$,
+    \item $D_2 = e\!\left(\mathrm{MSM}(\Gamma_1[\sigma], \mathbf{a}),\;
+          g_{2,\mathrm{fin}}\right)$: an AFGHO consistency anchor,
+    \item $E_1 = \mathrm{MSM}(\mathbf{T}', \mathbf{L})$: an auxiliary
+          $\mathbb{G}_1$ element binding the row commitments to the
+          evaluation vector $\mathbf{L}$.
+\end{itemize}
+In transparent mode, the verifier computes $E_2 = v\cdot g_{2,\mathrm{fin}}$
+directly from the claimed evaluation without any extra message.
+
+\subsection{Reduce-and-Fold (Protocol 14)}
+
+The main argument reduces the VMV claim to a single inner pairing product
+check through $\sigma$ rounds. Each round halves the current vector length.
+
+\textbf{First sub-message ($\beta$ challenge):} The prover sends
+$D_{1L}, D_{1R}, D_{2L}, D_{2R} \in \mathbb{G}_T$, the AFGHO commitments to
+the left and right halves of the current prover vectors. The verifier
+challenges $\beta$. The prover folds:
+\begin{equation}
+    \mathbf{v}_1 \leftarrow \mathbf{v}_1 + \beta\cdot\Gamma_1, \qquad
+    \mathbf{v}_2 \leftarrow \mathbf{v}_2 + \beta^{-1}\cdot\Gamma_2
+\end{equation}
+
+\textbf{Second sub-message ($\alpha$ challenge):} The prover sends
+$C_+ = \langle \mathbf{v}_{1L},\, \mathbf{v}_{2R}\rangle_T$ and
+$C_- = \langle \mathbf{v}_{1R},\, \mathbf{v}_{2L}\rangle_T$.
+The verifier challenges $\alpha$. The prover folds asymmetrically:
+\begin{equation}
+    \mathbf{v}_1 \leftarrow \alpha\cdot\mathbf{v}_{1L} + \mathbf{v}_{1R},
+    \qquad
+    \mathbf{v}_2 \leftarrow \alpha^{-1}\cdot\mathbf{v}_{2L} + \mathbf{v}_{2R}
+\end{equation}
+This differs from the textbook's symmetric folding but is internally
+consistent: both the prover and verifier update state using linear $\alpha$
+rather than $\alpha^2$, which saves field inversions per round. The verifier
+accumulates a $\mathbb{G}_T$ triple $(c, d_1, d_2)$ using $\chi^{(i)}$,
+$\Delta_L^{(i)}$, $\Delta_R^{(i)}$, and the round messages.
+
+\textbf{Final check:} After $\sigma$ rounds both vectors reduce to scalars.
+The verifier executes a single batched multi-pairing equation over all four
+accumulated values.
+
+\subsection{Proof Size}
+
+Each reduce-and-fold round contributes one first sub-message
+(four $\mathbb{G}_T$, one $\mathbb{G}_1$, one $\mathbb{G}_2$) and one second
+sub-message (two $\mathbb{G}_T$, two $\mathbb{G}_1$, two $\mathbb{G}_2$).
+Together with the VMV message and the final scalars:
+\begin{equation}
+    |\pi| =
+    \underbrace{2|\mathbb{G}_T| + 2|\mathbb{G}_1| + |\mathbb{G}_2|}_{\text{VMV + final}}
+    \;+\;
+    \sigma \cdot
+    \underbrace{(6|\mathbb{G}_T| + 3|\mathbb{G}_1| + 3|\mathbb{G}_2|)}_{\text{per round}}
+\end{equation}
+where $|\mathbb{G}|$ denotes the compressed serialised size of a group
+element. Because $\sigma = \lceil\ell/2\rceil = O(\log n)$, the proof size
+grows logarithmically with the polynomial size, though with a larger constant
+than KZG or Bulletproofs due to the $\mathbb{G}_T$ elements.
+
+\section{Pseudocode}
+
+\begin{algorithm}[H]
+\caption{Dory Setup, Commit, Prove, Verify}
+\label{alg:dory-all}
+\begin{algorithmic}[1]
+\Statex \textbf{Setup}$(\ell)$: \Comment{transparent; no secret involved}
+\State Generate $n = 2^\ell$ random generators $\Gamma_1 \in \mathbb{G}_1^n$,
+       $\Gamma_2 \in \mathbb{G}_2^n$
+\State Compute $\Delta_L^{(k)},\,\Delta_R^{(k)},\,\chi^{(k)}$ for
+       $k=1\ldots\ell$ incrementally
+\State \Return (\textit{ProverSetup}, \textit{VerifierSetup})
+\Statex
+\Statex \textbf{Commit}$(\mathbf{M},\,\nu,\,\sigma)$:
+       \Comment{$\mathbf{M}\in\mathbb{F}^{2^\nu\times 2^\sigma}$}
+\For{$i = 0$ \textbf{to} $2^\nu - 1$}
+    \State $c_i \gets \mathrm{MSM}(\Gamma_1[..2^\sigma],\;\mathbf{M}[i,:])$
+\EndFor
+\State $C \gets e\!\left(\mathrm{MSM}(c_0,\ldots;\;\Gamma_2[..2^\nu]),\;
+       g_{2,\mathrm{fin}}\right)$
+\State \Return $C \in \mathbb{G}_T$
+\Statex
+\Statex \textbf{Prove}$(\tilde{f},\;\mathbf{z},\;\text{row\_commits},\;\nu,\;\sigma)$:
+\State $v \gets \tilde{f}(\mathbf{z})$;\quad compute Lagrange vectors $\mathbf{a}$
+       (left), $\mathbf{b}$ (right)
+\State Compute and send VMV message $(C_q, D_2, E_1)$ via MSM and pairing
+\For{$i = 0$ \textbf{to} $\sigma - 1$}
+    \State Compute $D_{1L}, D_{1R}, D_{2L}, D_{2R}$;\quad send first sub-message
+    \State $\beta \gets \mathsf{tr}.\mathsf{challenge}()$;\quad
+           $\mathbf{v}_1 \gets \mathbf{v}_1 + \beta\,\Gamma_1$;\quad
+           $\mathbf{v}_2 \gets \mathbf{v}_2 + \beta^{-1}\,\Gamma_2$
+    \State $C_+ \gets \langle\mathbf{v}_{1L},\mathbf{v}_{2R}\rangle_T$;\quad
+           $C_- \gets \langle\mathbf{v}_{1R},\mathbf{v}_{2L}\rangle_T$;\quad
+           send second sub-message
+    \State $\alpha \gets \mathsf{tr}.\mathsf{challenge}()$;\quad
+           $\mathbf{v}_1 \gets \alpha\,\mathbf{v}_{1L}+\mathbf{v}_{1R}$;\quad
+           $\mathbf{v}_2 \gets \alpha^{-1}\mathbf{v}_{2L}+\mathbf{v}_{2R}$
+\EndFor
+\State \Return $\pi = (\text{VMV\_msg},\;\text{reduce\_rounds},\;\bar{v}_1,\,\bar{v}_2)$
+\Statex
+\Statex \textbf{Verify}$(C,\;v,\;\mathbf{z},\;\pi,\;\textit{VerifierSetup})$:
+\State $\mathsf{tr}.\mathsf{append}(C)$
+\For{$i = 0$ \textbf{to} $\sigma - 1$}
+    \State Re-derive $\beta^{(i)},\alpha^{(i)}$ from transcript
+    \State Update $(c,\,d_1,\,d_2)$ using round messages,
+           $\chi^{(i)},\Delta_L^{(i)},\Delta_R^{(i)}$
+\EndFor
+\State Check batched multi-pairing equation on final state
+\State \Return \textbf{accept} or \textbf{reject}
+\end{algorithmic}
+\end{algorithm}
+
+\section{Implementation}
+
+\textbf{This implementation is not the author's own work.} The codebase used
+throughout this chapter is the open-source reference library published by
+a16z crypto~\cite{a16z2022dory}, itself inspired by the Space and Time Labs
+proof-of-concept. It is the most well-audited publicly available Dory
+implementation and is written in Rust using the \texttt{arkworks}
+library~\cite{arkworks}, with modular backends for BLS12-381, BN254, and
+BLS12-377.
+
+The benchmark driver \texttt{src/bin/bench\_dory.rs} was written as part of
+this thesis work to uniformly measure every metric---setup, commit, prove,
+verify, pairing cost, $\mathbb{G}_1$ and $\mathbb{G}_2$ MSM cost, and proof
+size---in transparent mode and under identical conditions to the other three
+schemes. It exercises the library's public \texttt{setup}, \texttt{prove},
+and \texttt{verify} API without any modification to the core library code.
+
+\subsection{Fiat-Shamir via Blake2b}
+
+The original Dory theory describes an interactive protocol where the verifier
+sends a fresh random $\beta$ and $\alpha$ at each round. The a16z
+implementation makes it non-interactive using the Fiat-Shamir heuristic with
+a Blake2b hash function:
+
+\begin{itemize}
+    \item A \texttt{Blake2bTranscript} struct accumulates all messages sent
+          so far as serialised byte vectors.
+    \item After appending the first sub-message, the challenge is derived as
+          $\beta = \mathsf{Blake2b}(\text{transcript bytes})$, interpreted as
+          a field element.
+    \item After appending the second sub-message, $\alpha$ is derived the same
+          way.
+    \item The verifier replays the identical hash computation from the proof's
+          round messages, recovering the same challenges without interaction.
+\end{itemize}
+
+This makes the proof a single self-contained transferable object. The
+security of the transformation holds in the random oracle model.
+
+\subsection{First-Round MSM+Pair Optimisation}
+
+In the first reduce-and-fold round, the prover vector $\mathbf{v}_2$ has the
+special form $v_{2,i} = s_i \cdot g_{2,\mathrm{fin}}$ for scalars $s_i$
+(because it is initialised from the polynomial coefficients times a fixed
+$\mathbb{G}_2$ generator). Computing $D_{2L} = \langle \Gamma_{1L}',
+\mathbf{v}_{2L}\rangle_T$ naively requires $n/2$ individual pairings. The
+implementation instead performs:
+\begin{enumerate}
+    \item $\mathsf{sum} = \mathrm{MSM}(\Gamma_{1L}',\; \mathbf{s}_L)$ \quad
+          (one $\mathbb{G}_1$ MSM, cheap)
+    \item $D_{2L} = e(\mathsf{sum},\; g_{2,\mathrm{fin}})$ \quad
+          (one pairing, expensive)
+\end{enumerate}
+reducing $n/2$ pairings to one. The same trick applies to $D_{2R}$. Since a
+single pairing on BLS12-381 costs roughly $4\times$ a scalar multiplication,
+this gives a factor of roughly $n/2$ speedup for this sub-computation in the
+first round.
+
+\subsection{Proof Size Calculation}
+
+Proof size is computed from the compressed serialised sizes of the constituent
+group elements. The formula from the implementation is:
+\begin{align}
+    |\pi| &= \underbrace{2|\mathbb{G}_T| + |\mathbb{G}_1|}_{\text{VMV msg}}
+    \;+\;
+    \sigma\cdot\underbrace{(4|\mathbb{G}_T| + |\mathbb{G}_1| + |\mathbb{G}_2|)}_{\text{first sub-msg}}
+    \notag\\
+    &\quad+\;
+    \sigma\cdot\underbrace{(2|\mathbb{G}_T| + 2|\mathbb{G}_1| + 2|\mathbb{G}_2|)}_{\text{second sub-msg}}
+    \;+\;
+    \underbrace{|\mathbb{G}_1| + |\mathbb{G}_2|}_{\text{final msg}}
+\end{align}
+
+For BLS12-381, $|\mathbb{G}_T| = 576$ bytes ($\mathbb{F}_{p^{12}}$
+compressed), $|\mathbb{G}_1| = 48$ bytes, $|\mathbb{G}_2| = 96$ bytes. Each
+additional $\sigma$ round therefore adds
+$6\times576 + 3\times48 + 3\times96 = 3\,888$ bytes. For BN-254
+($|\mathbb{G}_T| = 384$, $|\mathbb{G}_1| = 32$, $|\mathbb{G}_2| = 64$) it
+adds $6\times384 + 3\times32 + 3\times64 = 2\,592$ bytes.
+
+\section{Benchmark Setup}
+
+Benchmarks are averaged over 5 runs. Sizes tested:
+$n \in \{4, 8, 16, 32, 64, 128, 256, 512, 1024\}$.
+Each size uses the matrix layout
+$\nu = \lfloor \log_2 n / 2 \rfloor$,
+$\sigma = \lceil \log_2 n / 2 \rceil$ (so $\sigma \geq \nu$ always).
+The single-pairing cost is measured as one
+$e : \mathbb{G}_1 \times \mathbb{G}_2 \to \mathbb{G}_T$ evaluation on random
+points. $\mathbb{G}_1$ and $\mathbb{G}_2$ MSM costs are measured at size $n$
+on random points and generators.
+
+\section{Benchmark Results}
+
+\subsection{Base Operations and Proof Size}
+
+\begin{table}[H]
+\centering
+\caption{Base operation costs at $n = 1024$ and proof size for Dory.}
+\label{tab:dory-base}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{BLS12-381} & \textbf{BN-254} & \textbf{BLS12-377} \\
+\midrule
+Pairing (ms)                           & 1.432  & 1.025  & 1.639  \\
+$\mathbb{G}_1$ MSM at $n=1024$ (ms)   & 42.57  & 14.53  & 43.11  \\
+$\mathbb{G}_2$ MSM at $n=1024$ (ms)   & 103.76 & 54.01  & 120.94 \\
+Proof size at $n=1024$ (bytes)         & 20\,784 & 13\,856 & 20\,784 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+$\mathbb{G}_2$ MSM is roughly $2.4\times$ more expensive than $\mathbb{G}_1$
+because $\mathbb{G}_2$ point arithmetic operates over a degree-2 field
+extension. BN-254 is the fastest curve, with a $2.9\times$ advantage over
+BLS12-381 on $\mathbb{G}_1$ MSM and a $1.9\times$ advantage on
+$\mathbb{G}_2$ MSM.
+
+Proof size grows in discrete steps because it depends on $\sigma$, not $n$
+directly: two consecutive values of $n$ that share the same $\sigma$ produce
+identical proof sizes. The full proof size table across all tested sizes is
+shown in Table~\ref{tab:dory-proof-size}.
+
+\begin{table}[H]
+\centering
+\caption{Dory proof size in bytes across polynomial sizes.}
+\label{tab:dory-proof-size}
+\begin{tabular}{rcrrrr}
+\toprule
+$n$ & $(\nu,\sigma)$ & \textbf{BLS12-381} & \textbf{BN-254} & \textbf{BLS12-377} \\
+\midrule
+4    & (1,1) & 5\,232  & 3\,488  & 5\,232  \\
+8    & (1,2) & 9\,120  & 6\,080  & 9\,120  \\
+16   & (2,2) & 9\,120  & 6\,080  & 9\,120  \\
+32   & (2,3) & 13\,008 & 8\,672  & 13\,008 \\
+64   & (3,3) & 13\,008 & 8\,672  & 13\,008 \\
+128  & (3,4) & 16\,896 & 11\,264 & 16\,896 \\
+256  & (4,4) & 16\,896 & 11\,264 & 16\,896 \\
+512  & (4,5) & 20\,784 & 13\,856 & 20\,784 \\
+1024 & (5,5) & 20\,784 & 13\,856 & 20\,784 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Setup and Commit Time}
+
+\begin{table}[H]
+\centering
+\caption{Dory setup and commit time in milliseconds.}
+\label{tab:dory-setup-commit}
+\begin{tabular}{rcccccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Setup (ms)}} & \multicolumn{3}{c}{\textbf{Commit (ms)}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+$n$ & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+4    & 14.13  & 7.08  & 14.43  & 2.72  & 1.93  & 3.29  \\
+8    & 23.38  & 12.76 & 23.43  & 2.88  & 2.10  & 3.42  \\
+16   & 20.89  & 11.44 & 25.15  & 6.11  & 3.16  & 6.03  \\
+32   & 34.89  & 18.65 & 43.93  & 6.38  & 3.66  & 8.22  \\
+64   & 37.90  & 19.34 & 42.89  & 13.39 & 6.71  & 13.66 \\
+128  & 61.81  & 33.13 & 73.67  & 16.84 & 8.88  & 21.05 \\
+256  & 63.80  & 33.50 & 73.61  & 33.66 & 17.16 & 34.27 \\
+512  & 110.62 & 58.74 & 133.41 & 46.30 & 25.27 & 55.41 \\
+1024 & 110.96 & 57.59 & 126.04 & 90.96 & 49.25 & 101.81 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Setup time grows in steps aligned with $\sigma$: when $n$ doubles but
+$\sigma$ stays the same (e.g.\ $n = 8 \to 16$ or $n = 32 \to 64$), setup
+cost barely changes; when $\sigma$ increments (e.g.\ $n = 16 \to 32$),
+setup roughly doubles. Overall setup is $O(n)$ pairings and is significantly
+cheaper than KZG at the same size: at $n = 1024$ Dory setup on BLS12-381
+takes 111~ms compared to 1027~ms for KZG, reflecting the absence of a
+structured reference string.
+
+Commit time is dominated by the $2^\nu$ row MSMs of size $2^\sigma$ each,
+totalling $O(n)$ scalar multiplications, and grows sub-linearly thanks to
+Pippenger's algorithm inside each MSM call.
+
+\subsection{Prove and Verify Time}
+
+\begin{table}[H]
+\centering
+\caption{Dory prove and verify time in milliseconds.}
+\label{tab:dory-prove-verify}
+\begin{tabular}{rcccccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Prove (ms)}} & \multicolumn{3}{c}{\textbf{Verify (ms)}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+$n$ & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+4    & 22.92  & 15.36  & 27.74  & 29.35  & 24.45 & 33.11 \\
+8    & 46.26  & 28.77  & 50.95  & 45.83  & 29.81 & 53.89 \\
+16   & 45.77  & 28.64  & 55.45  & 45.38  & 29.70 & 56.15 \\
+32   & 80.17  & 49.17  & 99.80  & 66.83  & 40.83 & 78.18 \\
+64   & 89.20  & 51.62  & 104.92 & 71.09  & 42.03 & 76.57 \\
+128  & 150.63 & 90.54  & 179.15 & 87.47  & 52.26 & 94.29 \\
+256  & 219.85 & 92.87  & 182.57 & 81.63  & 54.69 & 92.02 \\
+512  & 273.72 & 166.69 & 312.34 & 100.35 & 64.62 & 112.50 \\
+1024 & 264.31 & 173.06 & 309.89 & 95.82  & 61.90 & 112.07 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Prove time grows with $n$ but in the same staircase pattern as setup: when
+$n$ doubles within a fixed $\sigma$, the prover handles twice as many
+coefficients so prove time roughly doubles; when $\sigma$ increments, an
+entire extra reduce-and-fold round is added. The overall complexity is
+$O(n\log n)$ because $\sigma$ rounds each process all $n$ elements.
+
+Verify time grows logarithmically with $n$, confirming $O(\log n)$
+complexity. Because the verifier processes exactly $\sigma$ rounds, its cost
+only increases when $\sigma$ increments. Adjacent sizes sharing the same
+$\sigma$ therefore show nearly identical verify times---and in some cases
+verify time even decreases slightly from $n$ to $2n$ when $\sigma$ does not
+change, due to measurement noise. At $n = 1024$ on BLS12-381 verification
+takes 95.8~ms, about $25\times$ slower than KZG (3.8~ms) but $5\times$
+faster than Bulletproofs (496~ms) at the same size.
+
+\section{Discussion and Summary}
+
+\subsection{Transparency vs Verification Cost}
+
+Dory is the only scheme in this thesis that is both transparent and achieves
+sub-linear verification. Bulletproofs are also transparent but verify in
+$O(n)$; KZG and MKZG verify in $O(1)$ and $O(\mu)$ respectively but require
+a trusted setup. Dory bridges this gap, verifying in $O(\log n)$ at the cost
+of a larger proof and heavier per-round computation involving $\mathbb{G}_T$
+arithmetic.
+
+\subsection{Verifier Cost Scaling}
+
+The staircase behaviour in Table~\ref{tab:dory-prove-verify} directly confirms
+$O(\log n)$ scaling. The cost jumps only when $\sigma$ increments---for
+example from $n = 256$ to $n = 512$ (where $\sigma$ goes from 4 to 5)---not
+with every doubling of $n$. This makes Dory's verifier cost determined by the
+number of reduce-and-fold rounds, not by $n$ itself, and provides a practical
+advantage in settings where $n$ may be very large but proof sizes and verify
+times must stay manageable.
+
+\subsection{Prover Cost}
+
+At $n = 1024$ the prover takes 264~ms on BLS12-381, faster than Bulletproofs
+(650~ms) despite both being $O(n\log n)$ overall. The difference comes from
+two sources: Dory uses MSMs rather than individual scalar multiplications in
+each round, and the first-round MSM$+$pair optimisation eliminates $n/2 - 1$
+pairing calls at no cost. BN-254 is the fastest curve at 173~ms, benefiting
+from the smaller field in both $\mathbb{G}_1$ and $\mathbb{G}_2$ MSMs.
+
+\subsection{Curve Comparison}
+
+BN-254 is the fastest curve across all metrics. The advantage is wider than in
+KZG because Dory involves heavy $\mathbb{G}_2$ MSM work, and BN-254's smaller
+field size gives a larger speedup there than in $\mathbb{G}_1$. BLS12-381 and
+BLS12-377 are comparable; BLS12-377 is marginally slower at larger sizes.
+
+\begin{table}[H]
+\centering
+\caption{Dory performance summary at $n = 1024$.}
+\label{tab:dory-summary}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{BLS12-381} & \textbf{BN-254} & \textbf{BLS12-377} \\
+\midrule
+Setup (ms)                          & 110.96 & 57.59  & 126.04  \\
+Commit (ms)                         & 90.96  & 49.25  & 101.81  \\
+Prove (ms)                          & 264.31 & 173.06 & 309.89  \\
+Verify (ms)                         & 95.82  & 61.90  & 112.07  \\
+Pairing (ms)                        & 1.432  & 1.025  & 1.639   \\
+$\mathbb{G}_1$ MSM (ms)            & 42.57  & 14.53  & 43.11   \\
+$\mathbb{G}_2$ MSM (ms)            & 103.76 & 54.01  & 120.94  \\
+Proof size (bytes)                  & 20\,784 & 13\,856 & 20\,784 \\
+\bottomrule
+\end{tabular}
+\end{table}
