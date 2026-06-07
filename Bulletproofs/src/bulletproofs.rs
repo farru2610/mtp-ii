@@ -52,24 +52,44 @@ impl Transcript {
 // ────────────────────────────────────────────────────────────
 //  INNER PRODUCT  <u, g> = Σ uᵢ · gᵢ
 // ────────────────────────────────────────────────────────────
-
+//Simple MSM
 pub fn inner_product<G: CurveGroup>(
     scalars: &[G::ScalarField],
     points: &[G],
 ) -> G {
     assert_eq!(scalars.len(), points.len());
 
-    // Convert projective points → affine points
-    let affine_points: Vec<G::Affine> =
-        points.iter().map(|p| p.into_affine()).collect();
+    let mut result = G::zero();
 
-    // Convert scalars into BigInts
-    let scalar_bigints: Vec<<G::ScalarField as PrimeField>::BigInt> =
-        scalars.iter().map(|s| s.into_bigint()).collect();
+    for (s, p) in scalars.iter().zip(points.iter()) {
+        result += *p * *s;
+    }
 
-    // Pippenger MSM
-    VariableBaseMSM::msm_bigint(&affine_points, &scalar_bigints)
+    result
 }
+
+
+
+
+
+
+// pub fn inner_product<G: CurveGroup>(
+//     scalars: &[G::ScalarField],
+//     points: &[G],
+// ) -> G {
+//     assert_eq!(scalars.len(), points.len());
+
+//     // Convert projective points → affine points
+//     let affine_points: Vec<G::Affine> =
+//         points.iter().map(|p| p.into_affine()).collect();
+
+//     // Convert scalars into BigInts
+//     let scalar_bigints: Vec<<G::ScalarField as PrimeField>::BigInt> =
+//         scalars.iter().map(|s| s.into_bigint()).collect();
+
+//     // Pippenger MSM
+//     VariableBaseMSM::msm_bigint(&affine_points, &scalar_bigints)
+// }
 
 // ────────────────────────────────────────────────────────────
 //  PROOF STRUCTURES
