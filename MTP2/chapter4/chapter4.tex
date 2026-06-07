@@ -1,0 +1,256 @@
+% ============================================================
+%  CHAPTER 4: Multilinear KZG Polynomial Commitment
+% ============================================================
+
+\chapter{Multilinear KZG Polynomial Commitment}
+\label{chap:mkzg}
+
+Multilinear KZG (MKZG) extends KZG to polynomials over $\mu$
+variables where each variable has degree at most one. Such
+polynomials arise naturally in sumcheck-based proof systems and are
+the foundation of HyperPlonk \cite{hyperplonk2022}. The SRS encodes
+the multilinear Lagrange basis at a secret point rather than powers
+of a single secret. The proof consists of $\mu$ group elements and
+verification requires $\mu + 1$ pairings, both growing with the
+number of variables but remaining much cheaper than the prover cost.
+
+\section{Multilinear KZG Construction}
+
+\textbf{Multilinear Polynomials:}
+
+A multilinear polynomial in $\mu$ variables is uniquely determined
+by its $2^\mu$ evaluations on the Boolean hypercube $\{0,1\}^\mu$.
+Its multilinear extension is:
+\begin{equation}
+    \tilde{f}(\mathbf{X})
+    = \sum_{\mathbf{b} \in \{0,1\}^\mu}
+      \hat{f}(\mathbf{b}) \cdot \chi_{\mathbf{b}}(\mathbf{X}),
+    \qquad
+    \chi_{\mathbf{b}}(\mathbf{X})
+    = \prod_{i=1}^{\mu}
+      \bigl( X_i b_i + (1 - X_i)(1 - b_i) \bigr)
+\end{equation}
+
+\textbf{Trusted Setup:}
+
+The SRS is built from a secret vector $\mathbf{r} \in \mathbb{F}_r^\mu$:
+\begin{itemize}
+    \item $\mathsf{srs\_g1}[\mathbf{b}] = \chi_{\mathbf{b}}(\mathbf{r}) \cdot g_1$
+          for each $\mathbf{b} \in \{0,1\}^\mu$ \quad ($2^\mu$ elements)
+    \item $\mathsf{g2\_r}[i] = r_i \cdot g_2$ for $i = 0,\ldots,\mu-1$
+          \quad ($\mu$ elements)
+\end{itemize}
+
+\textbf{Commitment:}
+The commitment is an MSM of size $2^\mu$:
+\begin{equation}
+    C = \sum_{\mathbf{b}} \hat{f}(\mathbf{b}) \cdot \chi_{\mathbf{b}}(\mathbf{r}) \cdot g_1
+      = [\tilde{f}(\mathbf{r})]_1
+\end{equation}
+
+\textbf{Proof:}
+To prove $\tilde{f}(\mathbf{z}) = v$, the prover uses the identity:
+\begin{equation}
+    \tilde{f}(\mathbf{X}) - v
+    = \sum_{i=0}^{\mu-1} (X_i - z_i) \cdot q_i(X_{i+1}, \ldots, X_{\mu-1})
+\end{equation}
+and commits to each quotient: $\pi_i = [\tilde{q}_i(\mathbf{r})]_1$.
+
+\textbf{Verification:}
+The verifier checks (in additive $\mathbb{G}_T$ notation):
+\begin{equation}
+    e(C - v \cdot g_1,\; g_2)
+    \stackrel{?}{=}
+    \sum_{i=0}^{\mu-1} e\!\left(\pi_i,\; \mathsf{g2\_r}[i] - z_i \cdot g_2\right)
+\end{equation}
+
+\subsection{Bookkeeping Table for Witness Computation}
+
+Rather than computing quotient polynomials explicitly (which would
+require knowing $\mathbf{r}$), the implementation uses a bookkeeping
+table. The table starts as $\hat{f}$ and is halved at each step:
+\begin{equation}
+    \mathsf{table}_{\mathsf{next}}[j]
+    = (1 - z_i) \cdot \mathsf{table}[2j] + z_i \cdot \mathsf{table}[2j+1]
+\end{equation}
+At step $i$, the MSM weight for index $\mathsf{idx}$ is
+$w[\mathsf{idx}] = \mathsf{table}[2j+1] - \mathsf{table}[2j]$
+where $j$ encodes the upper bits of $\mathsf{idx}$. This avoids
+any knowledge of $\mathbf{r}$ during proving.
+
+\section{Pseudocode}
+
+\begin{algorithm}[H]
+\caption{MKZG Setup, Commit, Open, Verify}
+\label{alg:mkzg-all}
+\begin{algorithmic}[1]
+\Statex \textbf{Setup}$(g_1, g_2, \mathbf{r}, \mu)$:
+\For{$i = 0$ \textbf{to} $2^\mu - 1$}
+    \State Decode $i$ to bits $\mathbf{b}$;\;
+           $\mathsf{srs\_g1}.\mathsf{push}(\chi_{\mathbf{b}}(\mathbf{r}) \cdot g_1)$
+\EndFor
+\For{$i = 0$ \textbf{to} $\mu-1$}
+    \State $\mathsf{g2\_r}.\mathsf{push}(r_i \cdot g_2)$
+\EndFor;\; Discard $\mathbf{r}$
+\Statex
+\Statex \textbf{Commit}$(\mathsf{srs\_g1}, \hat{f})$:
+\Return $\mathsf{MSM}(\mathsf{srs\_g1}.\mathsf{to\_affine}(),\; \hat{f})$
+\Statex
+\Statex \textbf{Open}$(\mathsf{srs\_g1}, \hat{f}, \mathbf{z})$:
+\State $v \gets \mathsf{evaluate\_mle}(\hat{f}, \mathbf{z})$;\;
+       $\mathsf{bases} \gets \mathsf{srs\_g1}.\mathsf{to\_affine}()$
+\State $\mathsf{table} \gets \hat{f}$;\; $\mathsf{proofs} \gets []$
+\For{$i = 0$ \textbf{to} $\mu - 1$}
+    \For{$\mathsf{idx} = 0$ \textbf{to} $2^\mu - 1$}
+        \State $j \gets (\mathsf{idx} \gg (i+1))$ \textbf{and} $(2^{\mu-i-1}-1)$
+        \State $w[\mathsf{idx}] \gets \mathsf{table}[2j+1] - \mathsf{table}[2j]$
+    \EndFor
+    \State $\mathsf{proofs}.\mathsf{push}(\mathsf{MSM}(\mathsf{bases}, w))$
+    \State $\mathsf{table}[j] \gets (1-z_i)\mathsf{table}[2j] + z_i\mathsf{table}[2j+1]$;\;
+           halve table
+\EndFor
+\State \Return $(v,\; \mathsf{proofs})$
+\Statex
+\Statex \textbf{Verify}$(g_1, g_2, \mathsf{g2\_r}, C, \mathbf{z}, v, \mathsf{proofs})$:
+\State $\mathsf{lhs} \gets e(C - v \cdot g_1,\; g_2)$;\;
+       $\mathsf{rhs} \gets 0_{\mathbb{G}_T}$
+\For{$i = 0$ \textbf{to} $\mu - 1$}
+    \State $\mathsf{rhs} \mathrel{+}= e(\mathsf{proofs}[i],\;
+           \mathsf{g2\_r}[i] - z_i \cdot g_2)$
+\EndFor
+\State \Return $\mathsf{lhs} = \mathsf{rhs}$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Implementation}
+
+The implementation follows the same generic \texttt{Pairing} trait
+approach in Rust using \texttt{arkworks} \cite{arkworks}. Commitment
+uses Pippenger's MSM via \texttt{VariableBaseMSM}. The key
+implementation detail is in witness computation: the SRS affine
+points are converted \emph{once} before the outer loop and reused
+across all $\mu$ MSMs, avoiding $\mu$ redundant affine conversions.
+Verification uses \texttt{PairingOutput::zero()} as the additive
+identity in $\mathbb{G}_T$ and accumulates pairing results with
+\texttt{+=}.
+\\\\
+\textbf{Benchmark Setup:}
+Benchmarks are averaged over 5 runs. The parameter swept is
+$\mu \in \{2, 4, 6, 8, 10, 12, 14\}$, giving polynomial sizes
+$2^\mu \in \{4, 16, 64, 256, 1024, 4096, 16384\}$.
+
+\section{Benchmark Results}
+
+\textbf{Base Operations and Proof Size:}
+
+\begin{table}[H]
+\centering
+\caption{Base operation costs and proof size for MKZG.}
+\label{tab:mkzg-base}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{BLS12-381} & \textbf{BN254} & \textbf{BLS12-377} \\
+\midrule
+Scalar mul (ms)              & 0.2701 & 0.1219 & 0.2108 \\
+Pairing (ms)                 & 1.8964 & 1.0159 & 1.6259 \\
+Proof size at $\mu=14$ (bytes) & 672  & 448    & 672    \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Proof size is $\mu \times 48$ bytes for BLS12-381/377 and
+$\mu \times 32$ bytes for BN254, growing linearly with $\mu$.
+\\
+\textbf{Setup and Commit Time:}
+
+\begin{table}[H]
+\centering
+\caption{MKZG setup and commit time in milliseconds.}
+\label{tab:mkzg-setup-commit}
+\begin{tabular}{rrcccccc}
+\toprule
+& & \multicolumn{3}{c}{\textbf{Setup (ms)}} & \multicolumn{3}{c}{\textbf{Commit (ms)}} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-8}
+$\mu$ & $2^\mu$ & \textbf{381} & \textbf{254} & \textbf{377}
+               & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+2  & 4     & 3.10    & 1.37    & 2.75    & 0.68   & 0.36   & 0.58   \\
+4  & 16    & 7.46    & 3.80    & 7.06    & 1.33   & 0.80   & 1.38   \\
+6  & 64    & 19.05   & 10.41   & 19.62   & 4.10   & 2.27   & 4.13   \\
+8  & 256   & 61.34   & 35.10   & 65.08   & 12.04  & 6.21   & 12.12  \\
+10 & 1024  & 235.94  & 129.63  & 239.44  & 39.48  & 20.06  & 39.05  \\
+12 & 4096  & 911.26  & 501.41  & 995.47  & 134.04 & 69.71  & 142.21 \\
+14 & 16384 & 3742.07 & 1919.12 & 4034.83 & 534.45 & 328.06 & 547.45 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Setup roughly doubles with each increment of $\mu$, confirming
+$O(2^\mu)$ growth. At $\mu = 14$, BN254 is about 2x faster than
+BLS12-381, consistent with its scalar multiplication cost ratio.
+\\
+\textbf{Prove and Verify Time:}
+
+\begin{table}[H]
+\centering
+\caption{MKZG prove and verify time in milliseconds.}
+\label{tab:mkzg-prove-verify}
+\begin{tabular}{rcccccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Prove (ms)}} & \multicolumn{3}{c}{\textbf{Verify (ms)}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+$\mu$ & \textbf{381} & \textbf{254} & \textbf{377}
+      & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+2  & 1.07    & 0.67    & 0.91    & 6.41  & 4.85  & 6.79  \\
+4  & 4.63    & 2.43    & 4.70    & 10.35 & 6.96  & 11.61 \\
+6  & 17.61   & 9.49    & 18.43   & 13.88 & 9.76  & 16.65 \\
+8  & 72.18   & 36.78   & 71.17   & 17.97 & 12.37 & 21.42 \\
+10 & 263.37  & 149.15  & 272.35  & 21.85 & 15.98 & 26.61 \\
+12 & 1039.58 & 543.56  & 1109.62 & 26.52 & 17.37 & 32.59 \\
+14 & 5033.23 & 2777.54 & 5249.24 & 32.96 & 19.51 & 38.90 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Prove time grows as $O(\mu \cdot 2^\mu)$ since proving runs $\mu$
+full-size MSMs. The prove-to-commit ratio is roughly $\mu$,
+confirming the bookkeeping table runs $\mu$ MSMs of size $2^\mu$.
+Verification grows linearly with $\mu$ at roughly one pairing per
+variable, staying well under 40 ms even at $\mu = 14$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{chapter4/combined_bls12_381}
+\caption{MKZG benchmark results on BLS12-381: setup, commit, prove,
+and verify time (ms) vs.\ polynomial size $n = 2^\mu$ (log--log scale).}
+\label{fig:mkzg-combined-bls12381}
+\end{figure}
+
+\section{Discussion and Summary}
+
+The dominant cost in MKZG is proving, which scales exponentially
+with $\mu$. At $\mu = 14$, proving takes over 5 seconds on BLS12-381.
+This limits practical use to moderate $\mu$. However, verification
+at 33 ms on BLS12-381 at $\mu = 14$ is a major strength compared to
+Bulletproofs whose verification is $O(2^\mu)$. BN254 is the fastest
+curve at roughly 2x across all metrics.
+
+\begin{table}[H]
+\centering
+\caption{MKZG performance summary at $\mu = 14$.}
+\label{tab:mkzg-summary}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{BLS12-381} & \textbf{BN254} & \textbf{BLS12-377} \\
+\midrule
+Setup (ms)         & 3742.07 & 1919.12 & 4034.83 \\
+Commit (ms)        & 534.45  & 328.06  & 547.45  \\
+Prove (ms)         & 5033.23 & 2777.54 & 5249.24 \\
+Verify (ms)        & 32.96   & 19.51   & 38.90   \\
+Scalar mul (ms)    & 0.2701  & 0.1219  & 0.2108  \\
+Pairing (ms)       & 1.8964  & 1.0159  & 1.6259  \\
+Proof size (bytes) & 672     & 448     & 672     \\
+\bottomrule
+\end{tabular}
+\end{table}

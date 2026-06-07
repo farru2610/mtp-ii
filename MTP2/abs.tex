@@ -1,0 +1,35 @@
+%============================= abs.tex================================
+%============================= abs.tex================================
+\begin{Abstract}
+
+Polynomial commitment schemes (PCS) are a core building block of
+modern zero-knowledge proof systems, yet there is little empirical
+data comparing different constructions under identical hardware
+conditions across multiple elliptic curves.
+
+This thesis benchmarks four PCS: KZG, Multilinear KZG (MKZG),
+Bulletproofs, and Dory. KZG, MKZG, and Bulletproofs are implemented
+from scratch in Rust using \texttt{arkworks}; Dory uses the a16z
+reference implementation. All four are evaluated on BLS12-381, BN254,
+and BLS12-377 across seven metrics: setup, commit, prove, verify,
+scalar multiplication, pairing, and proof size. The effect of
+Pippenger's multi-scalar multiplication (MSM) algorithm is also
+studied empirically.
+
+KZG achieves the smallest proof (48\,bytes) and fastest verification
+(3.8\,ms, constant in $n$), making it optimal when a trusted setup is
+acceptable. MKZG extends KZG to multilinear polynomials but incurs
+exponential setup cost in the number of variables $\mu$ and an
+$O(\log n)$ verifier (21.85\,ms at $n=1024$). Dory delivers
+$O(\log n)$ verification (95.8\,ms at $n=1024$) with no trusted
+setup, at the cost of larger proofs ($\approx$20\,KB). Bulletproofs
+also need no trusted setup but suffer from $O(n)$ verification,
+limiting practical use. Across all schemes, BN254 is approximately
+$1.9\times$ faster than BLS12-381, while BLS12-377 is comparable to
+BLS12-381. Pippenger's algorithm gives a 5--6$\times$ speedup on
+large single MSMs.
+
+\end{Abstract}
+%=======================================================================
+
+%=======================================================================

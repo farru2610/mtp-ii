@@ -1,0 +1,31 @@
+\begin{thebibliography}{1}
+
+\bibitem{a16z_dory}
+a16z crypto, ``Dory: Reference implementation.''
+  \url{https://github.com/a16z/dory}, 2022.
+
+\bibitem{kate2010}
+A.~Kate, G.~M. Zaverucha, and I.~Goldberg, ``Constant-size commitments to
+  polynomials and their applications,'' in {\em ASIACRYPT}, pp.~177--194, 2010.
+
+\bibitem{papamanthou2013}
+C.~Papamanthou, E.~Shi, and R.~Tamassia, ``Signatures of correct computation,''
+  in {\em TCC}, 2013.
+
+\bibitem{hyperplonk2022}
+B.~Chen, B.~B{\"u}nz, D.~Boneh, and Z.~Zhang, ``{HyperPlonk}: Plonk with
+  linear-time prover and high-degree custom gates,'' in {\em EUROCRYPT}, 2023.
+
+\bibitem{bulletproofs2018}
+B.~B{\"u}nz, J.~Bootle, D.~Boneh, A.~Poelstra, P.~Wuille, and G.~Maxwell,
+  ``Bulletproofs: Short proofs for confidential transactions and more,'' in
+  {\em IEEE S\&P}, 2018.
+
+\bibitem{dory2021}
+J.~Lee, ``Dory: Efficient, transparent arguments for generalised inner products
+  and polynomial commitments,'' in {\em TCC}, 2021.
+
+\bibitem{arkworks}
+arkworks contributors, ``\texttt{arkworks} zksnark ecosystem,'' 2022.
+
+\end{thebibliography}

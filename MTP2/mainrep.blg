@@ -1,0 +1,60 @@
+This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: mainrep.aux
+A level-1 auxiliary file: dec.aux
+A level-1 auxiliary file: ack.aux
+A level-1 auxiliary file: abs.aux
+A level-1 auxiliary file: intro/introduction.aux
+A level-1 auxiliary file: chapter2/chapter2.aux
+A level-1 auxiliary file: chapter3/chapter3.aux
+A level-1 auxiliary file: chapter4/chapter4.aux
+A level-1 auxiliary file: chapter5/chapter5.aux
+A level-1 auxiliary file: chapter6/chapter6.aux
+A level-1 auxiliary file: chapter7/chapter7.aux
+The style file: ieeetr.bst
+Database file #1: mylit.bib
+Warning--entry type for "arkworks" isn't style-file defined
+--line 46 of file mylit.bib
+Warning--I didn't find a database entry for "a16z2022dory"
+You've used 7 entries,
+            1876 wiz_defined-function locations,
+            521 strings with 4544 characters,
+and the built_in function-call counts, 1392 in all, are:
+= -- 104
+> -- 68
+< -- 0
++ -- 26
+- -- 19
+* -- 89
+:= -- 208
+add.period$ -- 7
+call.type$ -- 7
+change.case$ -- 7
+chr.to.int$ -- 0
+cite$ -- 7
+duplicate$ -- 81
+empty$ -- 170
+format.name$ -- 19
+if$ -- 332
+int.to.chr$ -- 0
+int.to.str$ -- 7
+missing$ -- 5
+newline$ -- 24
+num.names$ -- 7
+pop$ -- 52
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 0
+skip$ -- 31
+stack$ -- 0
+substring$ -- 32
+swap$ -- 13
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 0
+warning$ -- 0
+while$ -- 10
+width$ -- 8
+write$ -- 58
+(There were 2 warnings)

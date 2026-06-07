@@ -1,0 +1,282 @@
+% ============================================================
+%  CHAPTER 3: KZG Polynomial Commitment
+% ============================================================
+
+\chapter{KZG Polynomial Commitment}
+\label{chap:kzg}
+
+The KZG polynomial commitment scheme was introduced by Kate,
+Zaverucha, and Goldberg in 2010 \cite{kate2010}. It is the most
+widely deployed polynomial commitment in practice, forming the core
+of systems like PLONK, Marlin, and many Ethereum scaling solutions.
+The commitment is a single elliptic curve point, the proof is also
+a single point, and verification requires exactly two pairings
+regardless of the polynomial degree. The cost of this efficiency is
+a one-time trusted setup that grows linearly with the degree bound.
+
+\section{KZG Construction}
+
+\textbf{Trusted Setup:}
+
+The setup generates a structured reference string (SRS) from a
+secret value $\tau \in \mathbb{F}_r$ (the toxic waste):
+\begin{equation}
+    \mathsf{srs} = \bigl(
+        [1]_1,\; [\tau]_1,\; \ldots,\; [\tau^d]_1,\;
+        [1]_2,\; [\tau]_2
+    \bigr)
+\end{equation}
+
+where $[x]_i$ means the generator of $\mathbb{G}_i$ multiplied by
+$x$. Once the SRS is generated, $\tau$ must be discarded. In
+practice this is done through a multi-party ceremony.
+
+\textbf{Commitment:}
+
+Given $f(X) = \sum_{i=0}^{d} a_i X^i$, the commitment is:
+\begin{equation}
+    C = \sum_{i=0}^{d} a_i \cdot [\tau^i]_1 = [f(\tau)]_1
+\end{equation}
+
+\textbf{Proof:}
+To prove $f(z) = y$, the prover computes the quotient polynomial
+$q(X) = (f(X) - y) / (X - z)$ and commits to it:
+\begin{equation}
+    \pi = [q(\tau)]_1
+\end{equation}
+
+\textbf{Verification:}
+The verifier checks the following pairing equation:
+\begin{equation}
+    e\!\left(\pi,\; [\tau]_2 - [z]_2\right)
+    \stackrel{?}{=}
+    e\!\left(C - [y]_1,\; [1]_2\right)
+\end{equation}
+
+This requires exactly two pairings regardless of degree. Security
+relies on the $q$-Strong Diffie-Hellman assumption.
+
+\section{Pseudocode}
+
+\begin{algorithm}[H]
+\caption{KZG Setup}
+\label{alg:kzg-setup}
+\begin{algorithmic}[1]
+\Require $g_1 \in \mathbb{G}_1$, $g_2 \in \mathbb{G}_2$,
+         secret $\tau$, degree bound $d$
+\Ensure  $\mathsf{crs\_g1}$, $\mathsf{crs\_g2}$, $g_{2,\tau}$
+\State $t \gets 1$
+\For{$i = 0$ \textbf{to} $d$}
+    \State $\mathsf{crs\_g1}.\mathsf{push}(t \cdot g_1)$;\;
+           $\mathsf{crs\_g2}.\mathsf{push}(t \cdot g_2)$
+    \State $t \gets t \times \tau$
+\EndFor
+\State $g_{2,\tau} \gets \tau \cdot g_2$
+\State \Return $(\mathsf{crs\_g1},\; \mathsf{crs\_g2},\; g_{2,\tau})$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{KZG Commit}
+\label{alg:kzg-commit}
+\begin{algorithmic}[1]
+\Require $\mathsf{crs\_g1}$, coefficients $\mathbf{a} = [a_0, \ldots, a_n]$
+\Ensure  $C \in \mathbb{G}_1$
+\State $C \gets \mathsf{MSM}(\mathsf{crs\_g1}[0..n].\mathsf{to\_affine}(),\; \mathbf{a})$
+\State \Return $C$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{KZG Open (Prove)}
+\label{alg:kzg-open}
+\begin{algorithmic}[1]
+\Require $\mathsf{crs\_g1}$, coefficients $[a_0, \ldots, a_n]$, point $z$
+\Ensure  $\pi \in \mathbb{G}_1$
+\State $y \gets \mathsf{evaluate}([a_0, \ldots, a_n],\; z)$
+\State $\mathsf{num} \gets [a_0 - y,\; a_1,\; \ldots,\; a_n]$;\;
+       $\mathsf{den} \gets [-z,\; 1]$
+\State $q \gets \mathsf{poly\_div}(\mathsf{num},\; \mathsf{den})$
+\State \Return $\mathsf{Commit}(q)$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{KZG Verify}
+\label{alg:kzg-verify}
+\begin{algorithmic}[1]
+\Require $g_1,\; g_2,\; g_{2,\tau}$, $C$, $z$, $y$, $\pi$
+\Ensure  \textbf{accept} or \textbf{reject}
+\State $\mathsf{lhs} \gets e(\pi,\; g_{2,\tau} - z \cdot g_2)$;\;
+       $\mathsf{rhs} \gets e(C - y \cdot g_1,\; g_2)$
+\State \Return $\mathsf{lhs} = \mathsf{rhs}$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Implementation}
+
+The implementation is written in Rust using the \texttt{arkworks}
+library \cite{arkworks}. The \texttt{KZG} struct is generic over
+the \texttt{Pairing} trait, so the same code runs on all three
+curves without modification. Setup computes powers of $\tau$
+iteratively. Commitment and proof generation both use Pippenger's
+MSM via \texttt{VariableBaseMSM}, with SRS points converted to
+affine before the call. Verification calls \texttt{ark\_ec::pairing}
+for the two pairing evaluations. The Pippenger optimisation is
+discussed in detail in Chapter~7.
+\\\\
+\textbf{Benchmark Setup:}
+
+Benchmarks are averaged over 10 runs. Degrees tested:
+$d \in \{4, 8, 16, 32, 64, 128, 256, 512, 1024\}$.
+Scalar multiplication and pairing costs are measured once per curve
+since they are degree-independent.
+
+\section{Benchmark Results}
+
+\textbf{Proof Size:}
+
+The proof is always one compressed $\mathbb{G}_1$ point:
+\textbf{48 bytes} for BLS12-381 and BLS12-377, \textbf{32 bytes}
+for BN254, constant at all degrees.
+
+\subsection{Base Operation Costs}
+\begin{table}[H]
+\centering
+\caption{Scalar multiplication and pairing time per curve.}
+\label{tab:kzg-base-ops}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Operation} & \textbf{BLS12-381} & \textbf{BN254} & \textbf{BLS12-377} \\
+\midrule
+Scalar mul (ms) & 0.3421 & 0.1138 & 0.2209 \\
+Pairing (ms)    & 2.7453 & 1.1441 & 2.0079 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+BN254 is roughly 3x faster on scalar multiplication and 2.4x faster
+on pairings than BLS12-381, owing to its smaller 254-bit field.
+
+\subsection{Setup Time}
+
+\begin{table}[H]
+\centering
+\caption{KZG setup time in milliseconds.}
+\label{tab:kzg-setup}
+\begin{tabular}{rrrr}
+\toprule
+\textbf{Degree} & \textbf{BLS12-381} & \textbf{BN254} & \textbf{BLS12-377} \\
+\midrule
+4    & 6.10    & 2.46   & 5.70    \\
+8    & 8.98    & 4.57   & 10.04   \\
+16   & 18.31   & 10.49  & 19.03   \\
+32   & 31.58   & 16.69  & 39.54   \\
+64   & 69.46   & 32.35  & 76.58   \\
+128  & 120.26  & 64.35  & 159.24  \\
+256  & 240.85  & 129.52 & 296.95  \\
+512  & 478.43  & 286.62 & 600.12  \\
+1024 & 1027.47 & 544.87 & 1156.37 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Setup grows linearly with degree. It is a one-time cost and does not
+repeat per proof.
+
+\subsection{Commit and Prove Time}
+
+\begin{table}[H]
+\centering
+\caption{KZG commit and prove time in milliseconds.}
+\label{tab:kzg-commit-prove}
+\begin{tabular}{rcccccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Commit (ms)}} & \multicolumn{3}{c}{\textbf{Prove (ms)}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\textbf{Degree} & \textbf{381} & \textbf{254} & \textbf{377}
+                & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+4    & 0.83  & 0.39  & 0.74  & 0.67  & 0.31  & 0.76  \\
+8    & 1.08  & 0.67  & 1.03  & 0.97  & 0.51  & 0.94  \\
+16   & 1.68  & 1.46  & 1.68  & 1.66  & 1.52  & 1.62  \\
+32   & 2.76  & 1.45  & 3.16  & 2.84  & 1.37  & 2.96  \\
+64   & 4.32  & 2.12  & 4.69  & 4.46  & 2.30  & 5.23  \\
+128  & 7.06  & 4.26  & 8.47  & 6.83  & 4.59  & 7.82  \\
+256  & 12.86 & 6.52  & 13.94 & 12.19 & 6.84  & 15.35 \\
+512  & 21.22 & 11.74 & 22.20 & 23.59 & 13.08 & 23.64 \\
+1024 & 40.37 & 20.88 & 42.00 & 42.10 & 23.51 & 46.16 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Commit and prove costs are nearly identical since both are dominated
+by an MSM of the same size. Both grow sub-linearly due to
+Pippenger's algorithm.
+
+\subsection{Verification Time}
+
+\begin{table}[H]
+\centering
+\caption{KZG verification time in milliseconds.}
+\label{tab:kzg-verify}
+\begin{tabular}{rrrr}
+\toprule
+\textbf{Degree} & \textbf{BLS12-381} & \textbf{BN254} & \textbf{BLS12-377} \\
+\midrule
+4    & 4.75 & 2.65 & 4.82 \\
+8    & 4.26 & 2.56 & 4.71 \\
+16   & 4.29 & 3.90 & 4.74 \\
+32   & 3.89 & 2.57 & 5.15 \\
+64   & 4.01 & 2.77 & 7.85 \\
+128  & 3.65 & 2.73 & 4.74 \\
+256  & 3.58 & 2.53 & 4.38 \\
+512  & 3.85 & 2.58 & 4.30 \\
+1024 & 3.81 & 2.53 & 4.65 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Verification is constant at all degrees, confirming $O(1)$
+complexity. The small variation is measurement noise. BN254
+verifies in around 2.5 ms, dominated by two pairing evaluations.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{chapter3/combined_bls12_381}
+\caption{KZG benchmark results on BLS12-381: setup, commit, prove,
+and verify time (ms) vs.\ polynomial degree $n$ (log--log scale).}
+\label{fig:kzg-combined-bls12381}
+\end{figure}
+
+\section{Discussion and Summary}
+
+BN254 is the fastest curve on every metric due to its smaller field,
+but offers only 100-110 bits of security. BLS12-381 and BLS12-377
+both provide 128-bit security; BLS12-381 is slightly faster for
+single-proof workloads while BLS12-377 is preferred for recursive
+proof composition.
+
+The standout property of KZG is constant verification: at degree
+1024, BN254 still verifies in 2.53 ms, the same as at degree 4.
+KZG also produces the smallest proofs of all four schemes: 32 or
+48 bytes regardless of degree.
+
+\begin{table}[H]
+\centering
+\caption{KZG performance summary at degree 1024.}
+\label{tab:kzg-summary}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{BLS12-381} & \textbf{BN254} & \textbf{BLS12-377} \\
+\midrule
+Setup (ms)         & 1027.47 & 544.87 & 1156.37 \\
+Commit (ms)        & 40.37   & 20.88  & 42.00   \\
+Prove (ms)         & 42.10   & 23.51  & 46.16   \\
+Verify (ms)        & 3.81    & 2.53   & 4.65    \\
+Scalar mul (ms)    & 0.3421  & 0.1138 & 0.2209  \\
+Pairing (ms)       & 2.7453  & 1.1441 & 2.0079  \\
+Proof size (bytes) & 48      & 32     & 48      \\
+\bottomrule
+\end{tabular}
+\end{table}

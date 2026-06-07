@@ -1,0 +1,306 @@
+\documentclass[12pt,a4paper,openright]{iitbreport}
+
+\usepackage{titlesec}
+\usepackage{adjustbox}
+\usepackage{longtable}
+% \usepackage{booktabs}
+% \usepackage{tabularx}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{algorithmicx}
+\usepackage{float}
+\usepackage{placeins}
+% \titleformat{\chapter}[display]
+% {\normalfont\bfseries}{}{0pt}{\Huge}
+  
+%% Default spacing: 1.5
+%% Default font size: 12pt
+%% Default font: txfonts (similar to times new roman) 
+
+%% Selectively comment out sections that you want to be left out but
+%% maintaining the page numbers and other \ref
+\includeonly{%
+  intro/introduction,
+  chapter2/chapter2,
+  chapter3/chapter3,
+  chapter4/chapter4,
+  chapter5/chapter5,
+  chapter6/chapter6,
+  chapter7/chapter7,
+  dec,abs,pub,ack
+}
+
+%%% Some commonly used packages (make sure your LaTeX installation
+%%% contains these packages, if not ask your senior to help installing
+%%% the packages)
+
+\usepackage{booktabs}
+\graphicspath{{expt/}}
+
+\setcitestyle{square}
+
+
+%%% Macro definitions for Commonly used symbols
+\newcommand{\Rey}{\ensuremath{\mathrm{Re}}}
+\newcommand{\avg}[1]{\ensuremath{\overline{#1}}}
+\newcommand{\tenpow}[1]{\ensuremath{\times 10^{#1}}}
+\newcommand{\pder}[2]{\ensuremath{\frac{\partial#1}{\partial#2}}}
+
+% Referencing macros
+\newcommand{\Eqref}[1]{Equation~\eqref{#1}}
+\newcommand{\Tabref}[1]{Table~\ref{#1}}
+\newcommand{\Figref}[1]{Figure~\ref{#1}}
+\newcommand{\Appref}[1]{Appendix~\ref{#1}}
+\newcommand{\Secref}[1]{Section~\ref{sec:#1}}
+
+
+
+\usepackage{tikz}
+
+\newcommand{\darkroundnum}[1]{%
+  \tikz[baseline=(char.base)]{
+    \node[shape=circle, draw=black, fill=black, text=white, inner sep=2pt] (char) {#1};
+  }%
+}
+
+
+
+\begin{document}
+\cleardoublepage
+	
+%%********************************Frontmatter***********************
+% In frontmatter everything comes with roman numbering	
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+%*******************************************************************
+%                         Title Page                            
+%*******************************************************************
+% \title{Performance Analysis of Polynomial Commitment Schemes under Varying Elliptic Curves and Cryptographic Parameters}
+% \author{Farhan Jawaid}
+
+% %% Print the date. Today's date comes by default, change it here to 
+% %% other date format, if required:
+
+% %\date{\today}
+% %\date{10 Mar 2016}
+
+
+% %% The type of the report can be set here
+
+% \reporttype{MTP1 report}
+% %\reporttype{A Thesis}
+% %\reporttype{A Dissertation}
+% %\reporttype{A Project Report}
+
+% %% Name of the degree
+% %\degree{Doctor of Philosophy}
+% % \degree{Master of Technology}
+
+
+% %% Department/Centre Name
+% \dept{Department of Computer Science and Engineering}
+
+% %% Supervisor and cosupervisor/excosupervisor are not essential parts
+% %% of a report title page, as it is your report!
+
+% %% But if you **have** to put it uncomment these
+% \supervisor{Prof. Sruthi Sekar}
+% %\cosupervisor{Co-super name}
+% %\excosupervisor{External Supervisor}
+
+% %% Roll number
+% \rollnum{24m0801}
+
+%*******************************************************************
+%                         Title Page
+%*******************************************************************
+
+\begin{titlepage}
+\thispagestyle{empty}
+
+\begin{center}
+
+
+% ---------- Title ----------
+{\Large\bfseries
+Performance Analysis of Polynomial Commitment Schemes under Varying Elliptic Curves and Cryptographic Parameters
+\par}
+
+\vspace{2cm}
+
+% ---------- Course ----------
+{\large\bfseries CS798: MTPII}
+
+\vspace{0.8cm}
+
+% ---------- Degree ----------
+\textit{Submitted in partial fulfillment of the requirements for the degree of}
+
+\vspace{0.5cm}
+
+{\large\bfseries Master of Technology}
+
+\vspace{0.3cm}
+
+% ---------- Author ----------
+\textbf{by}
+
+\vspace{0.3cm}
+
+{\large\bfseries Farhan Jawaid}
+
+\vspace{0.2cm}
+
+(Roll No. 24M0801)
+
+\vspace{1.2cm}
+
+% ---------- Guide ----------
+\textit{Under the supervision of}
+
+\vspace{0.3cm}
+
+{\large\bfseries Prof. Sruthi Sekar}
+
+\vspace{1.5cm}
+
+% ---------- IITB Logo ----------
+\includegraphics[width=3.5cm]{logo.png}
+
+\vspace{1.5cm}
+
+% ---------- Department ----------
+{\large\bfseries Department of Computer Science and Engineering}
+
+\vspace{0.3cm}
+
+{\large\bfseries INDIAN INSTITUTE OF TECHNOLOGY BOMBAY}
+
+\vspace{0.3cm}
+
+Mumbai -- 400076, India
+
+\vfill
+
+{\large\bfseries October 2025}
+
+\end{center}
+
+\end{titlepage}
+
+
+% \maketitle
+
+%*******************************************************************
+%                         Copyright Page                          
+%******************************************************************* 
+%\mycopyright                    
+
+%*******************************************************************
+%                         Dedication Page                         
+%*******************************************************************
+%\dedication[Dedicated to \ldots]        
+%\addintoc{Dedication}
+
+%*******************************************************************
+%                        Certificate Page                         
+%*******************************************************************
+%\makecertificate[change title name]{report type} 
+%\makecertificate{seminar report} 
+%\makecertificate{thesis}
+%\makecertificate{dissertation}
+%\makecertificate{project report}
+
+%\addintoc{Certificate}
+
+%*******************************************************************
+%                         Approval Sheet                         
+%*******************************************************************
+%\makeapproval{thesis}
+%\makeapproval{dissertation}
+
+%*******************************************************************
+%                          Declaration                           
+%*******************************************************************
+\include{dec}
+%******************************************************************* 
+%                        Acknowledgements                    
+%******************************************************************* 
+\include{ack}  
+
+
+%******************************************************************
+%                          Abstract                             
+%******************************************************************  
+\include{abs}
+
+%******************************************************************
+%                         Contents list                         
+%******************************************************************
+% \figurespagefalse
+% \tablespagefalse
+\makecontents % Creats toc, lof, and lot
+
+%******************************************************************
+%                        Notations                              
+%******************************************************************
+%\notations[4cm]{List of Symbols}      
+
+%%********************************Mainmatter***********************
+% In mainmatter everything comes with arabic numbering	
+\cleardoublepage
+\setcounter{page}{1}
+\pagenumbering{arabic}
+
+%******************************************************************
+%                         Chapters                           
+%****************************************************************** 
+\include{intro/introduction}
+\include{chapter2/chapter2}
+\include{chapter3/chapter3}
+\include{chapter4/chapter4}
+\include{chapter5/chapter5}
+\include{chapter6/chapter6}
+\include{chapter7/chapter7}
+% \include{lit/literature}
+%\include{expt/experimental}
+%\include{rnd/results}
+% \chapter{Conclusion \& future work}
+
+
+%****************************************************************
+%                         Appendices                           
+%****************************************************************
+%% Additional, supporting material, such as codes, derivations, etc., can be placed in the appendix
+%\appendix
+%\chapter{Supporting Material}
+
+%*******************************************************************
+ 
+
+%******************************************************************
+%                         Bibliography or References          
+%******************************************************************  
+\bibliographystyle{ieeetr}
+\bibliography{mylit}     
+
+
+%*******************************************************************
+%                         List of publications               
+%******************************************************************
+%\include{pub}            
+
+%*******************************************************************
+%                        About author                    
+%*******************************************************************
+%\colophon % remove this command while using this file.
+
+% GAME OVER
+%*******************************************************************
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 

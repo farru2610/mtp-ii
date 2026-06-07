@@ -1,0 +1,374 @@
+% ============================================================
+%  CHAPTER 5: Bulletproofs
+% ============================================================
+
+\chapter{Bulletproofs}
+\label{chap:bulletproofs}
+
+Bulletproofs were introduced by Bunz, Bootle, Boneh, Poelstra,
+Wuille, and Maxwell in 2018 \cite{bulletproofs2018}. The defining
+feature of Bulletproofs is that they require no trusted setup at
+all. The public parameters are just $n$ random curve points that
+anyone can generate from a public source of randomness, with no
+secret toxic waste involved.
+Unlike KZG and MKZG, Bulletproofs do not use pairings. Instead they
+use a recursive inner product argument that halves the problem size
+at each round. The result is a proof of $O(\log n)$ group elements,
+but verification requires $O(n)$ scalar multiplications. This makes
+Bulletproofs slower to verify than pairing-based schemes at large
+sizes, but eliminates the trusted setup entirely.
+
+\section{Bulletproofs Construction}
+
+\textbf{Commitment:}
+
+Given a scalar vector $\mathbf{u} \in \mathbb{F}^n$ and public
+generators $\mathbf{G} \in \mathbb{G}^n$, the commitment is:
+
+\begin{equation}
+    C = \langle \mathbf{u}, \mathbf{G} \rangle
+      = \sum_{i=0}^{n-1} u_i \cdot G_i
+\end{equation}
+\\
+\textbf{Recursive Halving:}
+
+The proof is built over $\log_2 n$ rounds. At each round the prover
+splits the vectors in half and computes two cross terms:
+
+\begin{equation}
+    V_L = \langle \mathbf{u}_L, \mathbf{G}_R \rangle, \qquad
+    V_R = \langle \mathbf{u}_R, \mathbf{G}_L \rangle
+\end{equation}
+
+The prover sends $V_L, V_R$ and receives challenge $\alpha$. The
+vectors are then folded:
+
+\begin{align}
+    \mathbf{u}' &= \alpha \cdot \mathbf{u}_L + \alpha^{-1} \cdot \mathbf{u}_R \\
+    \mathbf{G}' &= \alpha^{-1} \cdot \mathbf{G}_L + \alpha \cdot \mathbf{G}_R
+\end{align}
+
+The invariant $C' = \langle \mathbf{u}', \mathbf{G}' \rangle$ is
+preserved. After $\log_2 n$ rounds, the vectors reduce to a single
+scalar $\bar{u}$ and point $\bar{G}$, which are sent as the final
+proof elements.
+\\
+\textbf{Verification:}
+
+The verifier replays the folding using the round messages. At each
+round the commitment is updated as:
+\begin{equation}
+    C \gets C + \alpha^2 \cdot V_L + \alpha^{-2} \cdot V_R
+\end{equation}
+
+and the generator vector is folded the same way. At the end the
+verifier checks:
+
+\begin{equation}
+    C \stackrel{?}{=} \bar{u} \cdot \bar{G}
+    \quad \text{and} \quad
+    \bar{G} \stackrel{?}{=} G_{\mathsf{final}}
+\end{equation}
+
+Because the verifier must refold the full $\mathbf{G}$ vector at
+each round, verification costs $O(n)$ scalar multiplications.
+\\
+\textbf{Proof Size:}
+
+Each round contributes two curve points. The full proof is:
+\begin{equation}
+    \text{proof size}
+    = \log_2(n) \times 2 \times |\mathbb{G}|
+    + |\mathbb{F}| + |\mathbb{G}|
+\end{equation}
+
+\section{Pseudocode}
+
+\begin{algorithm}[H]
+\caption{Bulletproofs Setup, Commit, Prove, Verify}
+\label{alg:bp-all}
+\begin{algorithmic}[1]
+\Statex \textbf{Setup}$(n)$: \Return $n$ random points $\mathbf{G}$
+    \Comment{No secret involved}
+\Statex \textbf{Commit}$(\mathbf{G}, \mathbf{u})$:
+    \Return $\mathsf{MSM}(\mathbf{G}, \mathbf{u})$
+\Statex
+\Statex \textbf{Prove}$(C, \mathbf{u}, \mathbf{G})$:
+\State $\mathsf{tr}.\mathsf{append}(C)$;\; $\mathsf{rounds} \gets []$
+\While{$|\mathbf{u}| > 1$}
+    \State Split $\mathbf{u}, \mathbf{G}$ into left/right halves
+    \State $V_L \gets \mathsf{MSM}(\mathbf{G}_R, \mathbf{u}_L)$;\;
+           $V_R \gets \mathsf{MSM}(\mathbf{G}_L, \mathbf{u}_R)$
+    \State $\mathsf{tr}.\mathsf{append}(V_L, V_R)$;\;
+           $\alpha \gets \mathsf{tr}.\mathsf{challenge}()$
+           \Comment{Fiat-Shamir via SHA-256}
+    \State $\mathbf{u} \gets \alpha\mathbf{u}_L + \alpha^{-1}\mathbf{u}_R$;\;
+           $\mathbf{G} \gets \alpha^{-1}\mathbf{G}_L + \alpha\mathbf{G}_R$
+    \State $\mathsf{rounds}.\mathsf{push}(V_L, V_R)$
+\EndWhile
+\State \Return $(\mathsf{rounds}, \mathbf{u}[0], \mathbf{G}[0])$
+\Statex
+\Statex \textbf{Verify}$(\mathbf{G}, C, \mathsf{rounds}, \bar{u}, \bar{G})$:
+\State $\mathsf{tr}.\mathsf{append}(C)$
+\For{\textbf{each} $(V_L, V_R)$ in $\mathsf{rounds}$}
+    \State $\mathsf{tr}.\mathsf{append}(V_L, V_R)$;\;
+           $\alpha \gets \mathsf{tr}.\mathsf{challenge}()$
+    \State $C \gets C + \alpha^2 V_L + \alpha^{-2} V_R$;\;
+           $\mathbf{G} \gets \alpha^{-1}\mathbf{G}_L + \alpha\mathbf{G}_R$
+\EndFor
+\State \Return $C = \bar{u} \cdot \bar{G}$ \textbf{and} $\mathbf{G}[0] = \bar{G}$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Implementation and Optimisations}
+
+The implementation is in Rust using the \texttt{arkworks} library
+\cite{arkworks}. Since Bulletproofs use no pairings, the generic
+parameter is \texttt{CurveGroup} rather than \texttt{Pairing}, and
+the same code runs on all three curves.
+
+Two significant optimisations are present in the implementation that
+differ from the textbook description of the protocol.
+
+\subsection{Fiat-Shamir via SHA-256}
+
+The original Bulletproofs theory describes an interactive protocol where the verifier
+sends a fresh random $\alpha$ at each round. The implementation
+replaces this with the Fiat-Shamir heuristic using SHA-256:
+
+\begin{itemize}
+    \item A \texttt{Transcript} struct accumulates all messages
+          seen so far as byte vectors.
+    \item At each round, after appending $V_L$ and $V_R$, the
+          challenge is derived as:
+          \texttt{alpha = SHA-256(all transcript bytes)},
+          interpreted as a field element via
+          \texttt{F::from\_le\_bytes\_mod\_order}.
+    \item The verifier replays the exact same hash computation
+          using the proof's round messages, producing the same
+          challenges without any interaction.
+\end{itemize}
+
+This makes the proof a single transferable object. The prover runs
+once and the output can be verified by anyone, anytime, without
+any back-and-forth communication. This is the standard approach in
+all practical deployments of Bulletproofs.
+
+\subsection{Pippenger's MSM for Inner Products}
+
+Instead of treating $\langle \mathbf{u}, \mathbf{G} \rangle$ as a
+naive sum of $n$ scalar multiplications, costing $O(n)$ group
+operations, the implementation uses
+\texttt{VariableBaseMSM::msm\_bigint} from arkworks, which runs
+Pippenger's algorithm:
+
+\begin{itemize}
+    \item Scalars are converted to \texttt{BigInt} representation
+          before the call, which is required by the arkworks MSM
+          interface.
+    \item Points are converted to affine coordinates once before
+          the MSM and reused across rounds where possible.
+    \item The effective cost is $O(n / \log n)$ group operations
+          rather than $O(n)$, giving a meaningful speedup for
+          large $n$.
+\end{itemize}
+
+This optimisation applies in three places: the initial commit,
+the $V_L$ computation at each round, and the $V_R$ computation
+at each round. The total number of MSM calls across all rounds
+is $2 \log_2 n$, with sizes $n, n/2, n/4, \ldots, 2$.
+
+\subsection{Proof Size Calculation}
+
+Proof size is computed as
+$\log_2(n) \times 2 \times |\mathbb{G}.\mathsf{Affine}|
++ |\mathbb{G}.\mathsf{ScalarField}|
++ |\mathbb{G}.\mathsf{Affine}|$
+using \texttt{std::mem::size\_of}. For BLS12-381 and BLS12-377
+each affine point is 96 bytes and each scalar is 32 bytes. For
+BN-254 each affine point is 64 bytes.
+\\\\
+\textbf{Benchmark Setup:}
+
+Benchmarks are averaged over 10 runs. Sizes tested:
+$n \in \{4, 8, 16, 32, 64, 128, 256, 512, 1024\}$.
+MSM time is benchmarked separately at each size since it is the
+dominant sub-operation in both proving and verification.
+
+\section{Benchmark Results}
+
+\textbf{Base Operations and Proof Size:}
+
+\begin{table}[H]
+\centering
+\caption{Base operation costs at $n = 1024$ and proof size.}
+\label{tab:bp-base}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{BLS12-381} & \textbf{BN-254} & \textbf{BLS12-377} \\
+\midrule
+Scalar mul (ms)              & 0.2768 & 0.1229 & 0.3047 \\
+MSM at $n=1024$ (ms)         & 28.02  & 16.62  & 28.12  \\
+Proof size at $n=1024$ (bytes) & 2216 & 1544   & 2216   \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At $n = 1024$ there are $\log_2(1024) = 10$ rounds, each
+contributing two curve points $(V_L, V_R)$, plus one final point
+$\bar{G}$ and one scalar $\bar{u}$. For BLS12-381 this gives
+$10 \times 2 \times 96 + 96 + 32 = 2016 + 128 = 2216$ bytes.
+For BN-254: $10 \times 2 \times 64 + 64 + 32 = 1280 + 192 = 1544$ bytes.
+Each time $n$ doubles, one more round is added, increasing the proof
+by $2 \times 96 = 192$ bytes for BLS12-381 or $2 \times 64 = 128$
+bytes for BN-254. The full proof size table across all tested sizes
+is shown in Table~\ref{tab:bp-proof-size}.
+
+\begin{table}[H]
+\centering
+\caption{Bulletproofs proof size in bytes across vector sizes.}
+\label{tab:bp-proof-size}
+\begin{tabular}{rrrr}
+\toprule
+$n$ & \textbf{BLS12-381} & \textbf{BN-254} & \textbf{BLS12-377} \\
+\midrule
+4    & 552  & 392  & 552  \\
+8    & 760  & 536  & 760  \\
+16   & 968  & 680  & 968  \\
+32   & 1176 & 824  & 1176 \\
+64   & 1384 & 968  & 1384 \\
+128  & 1592 & 1112 & 1592 \\
+256  & 1800 & 1256 & 1800 \\
+512  & 2008 & 1400 & 2008 \\
+1024 & 2216 & 1544 & 2216 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Setup and Commit Time:}
+
+\begin{table}[H]
+\centering
+\caption{Setup and commit time in milliseconds.}
+\label{tab:bp-setup-commit}
+\begin{tabular}{rcccccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Setup (ms)}} & \multicolumn{3}{c}{\textbf{Commit (ms)}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+$n$ & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+4    & 0.65   & 0.09  & 0.62   & 0.76  & 0.40  & 0.63  \\
+8    & 1.30   & 0.20  & 1.12   & 0.99  & 0.50  & 0.94  \\
+16   & 2.19   & 0.38  & 2.35   & 1.42  & 0.70  & 1.62  \\
+32   & 4.25   & 0.64  & 4.51   & 2.30  & 1.46  & 2.51  \\
+64   & 8.05   & 1.22  & 9.67   & 3.92  & 1.86  & 4.34  \\
+128  & 17.27  & 4.92  & 25.22  & 6.58  & 4.47  & 6.99  \\
+256  & 37.49  & 5.46  & 37.06  & 12.98 & 5.25  & 13.68 \\
+512  & 79.54  & 8.63  & 74.28  & 21.57 & 8.82  & 23.36 \\
+1024 & 154.91 & 18.36 & 149.98 & 39.05 & 15.41 & 39.98 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Bulletproofs setup at $n = 1024$ takes only 155 ms on BLS12-381,
+compared to over 1 second for KZG setup at the same size. BN-254
+setup is exceptionally fast at 18 ms because its random point
+generation is cheaper. Commit cost is an MSM of size $n$ and grows
+sub-linearly thanks to Pippenger's algorithm.
+\\
+\textbf{Prove and Verify Time:}
+
+\begin{table}[H]
+\centering
+\caption{Prove and verify time in milliseconds.}
+\label{tab:bp-prove-verify}
+\begin{tabular}{rcccccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Prove (ms)}} & \multicolumn{3}{c}{\textbf{Verify (ms)}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+$n$ & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+4    & 3.34   & 1.70   & 3.01   & 2.53   & 1.46   & 2.73   \\
+8    & 5.63   & 3.27   & 6.43   & 4.81   & 2.66   & 5.76   \\
+16   & 10.66  & 6.38   & 11.77  & 8.37   & 5.59   & 9.14   \\
+32   & 20.48  & 11.92  & 22.07  & 17.85  & 9.15   & 17.42  \\
+64   & 38.90  & 21.81  & 43.59  & 29.77  & 17.10  & 34.16  \\
+128  & 76.16  & 43.36  & 91.91  & 57.69  & 38.40  & 63.68  \\
+256  & 142.95 & 84.38  & 158.03 & 116.46 & 64.82  & 120.30 \\
+512  & 302.36 & 162.33 & 295.19 & 254.48 & 133.71 & 239.04 \\
+1024 & 650.35 & 415.67 & 582.06 & 496.26 & 329.64 & 499.11 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Prove and verify times both roughly double with each doubling of
+$n$, confirming $O(n)$ complexity. At $n = 1024$, proving takes
+650 ms on BLS12-381 and verifying takes 496 ms, compared to 42 ms
+and 3.8 ms respectively for KZG.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{chapter5/combined_bls12_381}
+\caption{Bulletproofs benchmark results on BLS12-381: setup, commit,
+prove, and verify time (ms) vs.\ vector size $n$ (log--log scale).}
+\label{fig:bp-combined-bls12381}
+\end{figure}
+
+\section{Discussion and Summary}
+
+\subsection{Fiat-Shamir: Theory vs Implementation}
+
+The original protocol is interactive. The implementation's
+non-interactive Fiat-Shamir transformation via SHA-256 is strictly
+better for practice. The proof is a self-contained object that
+requires no communication channel. The security of this
+transformation holds in the random oracle model.
+
+\subsection{MSM Optimisation Impact}
+
+Without Pippenger's MSM, proving at $n = 1024$ would require
+$\sum_{k=1}^{10} 2 \times 2^k \approx 4094$ individual scalar
+multiplications. With Pippenger's algorithm each MSM of size $m$
+costs roughly $O(m / \log m)$ group operations instead of $O(m)$.
+At $n = 1024$ this gives a theoretical speedup factor of around
+$\log_2(1024)/2 = 5$. The measured MSM time at $n = 1024$ is
+28 ms on BLS12-381, while 1024 naive scalar multiplications would
+cost roughly $1024 \times 0.277 \approx 284$ ms, confirming a
+real speedup of about 10x.
+
+\subsection{Transparency vs Verification Cost}
+
+Bulletproofs are the right choice when a trusted setup is not
+acceptable. At $n = 1024$, verifying takes 496 ms on BLS12-381,
+about 130x slower than KZG's 3.8 ms which is almost constant. For on-chain verifiers or
+high-throughput systems this is prohibitive. For small $n$ or
+offline verification the cost is acceptable.
+
+\subsection{Curve Comparison}
+
+BN-254 is the fastest across all metrics. The gap is larger than
+in KZG or MKZG because Bulletproofs involve far more scalar
+multiplications, which directly track the per-curve scalar
+multiplication speed. BLS12-381 and BLS12-377 perform similarly,
+with BLS12-377 slightly slower at larger sizes.
+
+\begin{table}[H]
+\centering
+\caption{Bulletproofs performance summary at $n = 1024$.}
+\label{tab:bp-summary}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{BLS12-381} & \textbf{BN-254} & \textbf{BLS12-377} \\
+\midrule
+Setup (ms)         & 154.91 & 18.36  & 149.98 \\
+Commit (ms)        & 39.05  & 15.41  & 39.98  \\
+Prove (ms)         & 650.35 & 415.67 & 582.06 \\
+Verify (ms)        & 496.26 & 329.64 & 499.11 \\
+Scalar mul (ms)    & 0.2768 & 0.1229 & 0.3047 \\
+MSM (ms)           & 28.02  & 16.62  & 28.12  \\
+Proof size (bytes) & 2216   & 1544   & 2216   \\
+\bottomrule
+\end{tabular}
+\end{table}

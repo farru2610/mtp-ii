@@ -1,0 +1,152 @@
+\chapter{Background}
+\label{chap:background}
+
+This chapter provides the background needed to follow the rest of the
+thesis. We cover finite fields, elliptic curves, bilinear pairings,
+and give a brief overview of each of the four schemes. The detailed
+mathematics and pseudocode for each scheme are presented in their
+respective chapters.
+ 
+% ────────────────────────────────────────────────────────────
+\section{Finite Fields and Elliptic Curves}
+\label{sec:fields-curves}
+ 
+A \emph{prime field} $\mathbb{F}_p$ is the set of integers
+$\{0, 1, \ldots, p-1\}$ where $p$ is a prime, with addition and
+multiplication done modulo $p$. Elliptic curve cryptography works
+over points on a curve defined over such a field.
+ 
+An elliptic curve over $\mathbb{F}_p$ in short Weierstrass form is:
+\begin{equation}
+    E : y^2 = x^3 + ax + b,
+    \quad a, b \in \mathbb{F}_p,
+    \quad 4a^3 + 27b^2 \neq 0.
+    \label{eq:weierstrass}
+\end{equation}
+ 
+The points on this curve form an abelian group under the standard
+point addition law. The core operation in all protocols studied here
+is \emph{scalar multiplication}: given a point $P$ and an integer
+$k$, computing $[k]P = P + P + \cdots + P$ ($k$ times). The cost of
+this operation directly determines how fast commitment, proving, and
+verification are in practice.
+ 
+% ────────────────────────────────────────────────────────────
+\section{Bilinear Pairings}
+\label{sec:pairings}
+ 
+Let $\mathbb{G}_1$, $\mathbb{G}_2$ be two groups of prime order $r$
+on an elliptic curve, and $\mathbb{G}_T$ a multiplicative group of
+the same order. A bilinear pairing is a map:
+\begin{equation}
+    e : \mathbb{G}_1 \times \mathbb{G}_2 \longrightarrow \mathbb{G}_T
+\end{equation}
+that satisfies $e([a]P,\, [b]Q) = e(P,Q)^{ab}$ for all scalars
+$a, b$. This bilinearity property is what allows pairing-based
+schemes like KZG, MKZG, and Dory to verify polynomial identities
+using only committed values, without the verifier ever seeing the
+polynomial. Pairing computations are significantly more expensive
+than scalar multiplications, so the number of pairings required
+during verification is a key metric for comparing schemes.
+ 
+% ────────────────────────────────────────────────────────────
+\section{Elliptic Curves Used in This Work}
+\label{sec:curves}
+ 
+All three curves used in this thesis are pairing-friendly curves with
+embedding degree 12, meaning they support efficient pairing
+computations. Table~\ref{tab:curves} summarises their key parameters.
+ 
+\begin{table}[h!]
+\centering
+\caption{Parameters of the three elliptic curves used in this thesis.}
+\label{tab:curves}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Property} & \textbf{BLS12-381} & \textbf{BN254} & \textbf{BLS12-377} \\
+\midrule
+Field size (bits)     & 381  & 254      & 377  \\
+Subgroup order (bits) & 255  & 254      & 253  \\
+Security level (bits) & 128  & 100--110 & 128  \\
+Trusted setup needed  & Yes  & Yes      & Yes  \\
+Designed for          & Zcash & Ethereum & Recursion \\
+\bottomrule
+\end{tabular}
+\end{table}
+ 
+\textbf{BLS12-381} was designed by Sean Bowe in 2017 for Zcash. It
+offers 128-bit security and is widely used in production SNARK
+systems.
+ 
+\textbf{BN254} was introduced by Barreto and Naehrig in 2005 and was
+the default curve in early Ethereum zero-knowledge applications. Its
+security is slightly lower than the other two due to the
+Kim-Barbulescu attacks on the target field, but its smaller field
+size makes arithmetic faster in software.
+ 
+\textbf{BLS12-377} was designed specifically to support recursive
+proof composition, where one proof verifies another proof. Its
+subgroup order matches the base field of the outer curve BW6-761,
+which makes recursive verification efficient.
+ 
+% ────────────────────────────────────────────────────────────
+\section{Polynomial Commitment Schemes}
+\label{sec:pcs-overview}
+ 
+A polynomial commitment scheme allows a prover to commit to a
+polynomial and later prove its evaluation at any point chosen by
+the verifier. Formally it consists of four algorithms:
+\textsc{Setup}, \textsc{Commit}, \textsc{Open}, and \textsc{Verify}.
+A scheme must be correct, binding, and optionally hiding.
+ 
+The four schemes studied in this thesis differ in whether they need
+a trusted setup, how large their proofs are, and how expensive
+proving and verification are. Table~\ref{tab:scheme-comparison}
+gives a high-level comparison.
+ 
+\begin{table}[h!]
+\centering
+\caption{High-level comparison of the four polynomial commitment
+schemes. $d$ is the polynomial degree and $\mu$ is the number of
+variables for multilinear polynomials.}
+\label{tab:scheme-comparison}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Scheme} & \textbf{Trusted Setup} & \textbf{Proof Size}
+               & \textbf{Prover Cost} & \textbf{Verifier Cost}
+               & \textbf{Uses Pairings} \\
+\midrule
+KZG             & Yes, $O(d)$        & $O(1)$        & $O(d)$
+                & $O(1)$             & Yes \\
+Multilinear KZG & Yes, $O(2^\mu)$    & $O(\mu)$      & $O(2^\mu)$
+                & $O(\mu)$           & Yes \\
+Bulletproofs    & No                 & $O(\log d)$   & $O(d)$
+                & $O(d)$             & No  \\
+Dory            & No                 & $O(\log d)$   & $O(d)$
+                & $O(\log d)$        & Yes \\
+\bottomrule
+\end{tabular}}
+\end{table}
+ 
+\textbf{KZG} \cite{kate2010} is the most widely deployed scheme in
+practice. It requires a trusted setup but produces constant-size
+proofs and constant-time verification, making it very attractive for
+applications where verification speed matters.
+ 
+\textbf{Multilinear KZG} \cite{papamanthou2013} extends KZG to
+polynomials over the Boolean hypercube. It is used in systems like
+HyperPlonk \cite{hyperplonk2022} that work with multilinear
+arithmetic.
+ 
+\textbf{Bulletproofs} \cite{bulletproofs2018} require no trusted
+setup at all. The trade-off is that verification cost grows linearly
+with the polynomial degree, which makes them slower to verify than
+pairing-based schemes at large sizes.
+ 
+\textbf{Dory} \cite{dory2021} also requires no trusted setup and
+achieves $O(\log d)$ verification using pairings, sitting between
+Bulletproofs and KZG on the transparency-efficiency spectrum.
+ 
+Each scheme is described in full detail, with pseudocode and
+benchmark results, in its own chapter.

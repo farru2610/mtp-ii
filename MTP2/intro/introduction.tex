@@ -1,0 +1,126 @@
+\newcommand{\etas}{\ensuremath{\eta_{\mathrm{s}}}}
+
+\chapter{Introduction}
+
+\section{Motivation}
+ 
+Modern cryptographic systems increasingly rely on the ability to prove
+that a computation was carried out correctly, without revealing the
+data involved. This idea sits at the centre of zero-knowledge proofs,
+verifiable computation, and blockchain-based privacy systems. One of
+the most useful building blocks for all of these is the
+\textbf{polynomial commitment scheme}.
+ 
+A polynomial commitment scheme lets a prover commit to a polynomial
+$f \in \mathbb{F}[X]$ and later convince a verifier that $f$ evaluates
+to a specific value at a point of the verifier's choice, without
+exposing the polynomial itself. This primitive appears inside nearly
+every practical SNARK system in use today, including PLONK, Marlin,
+and Groth16 variants.
+ 
+Even though the theory behind these schemes is well established, their
+real-world performance depends heavily on how they are implemented and,
+in particular, which elliptic curve is used underneath. Different
+curves trade off security level, pairing cost, and field arithmetic
+speed in different ways. There is surprisingly little published work
+that measures all of these effects together in a controlled setting.
+This thesis fills that gap by implementing three polynomial commitment
+schemes from scratch and benchmarking all four, including Dory via its
+reference implementation, across three elliptic curves and measuring
+every major performance dimension.
+ 
+\section{Objectives}
+ 
+This thesis has four concrete goals:
+ 
+\begin{enumerate}
+    \item \textbf{Implementation.} Build working implementations of
+          KZG, Multilinear KZG (MKZG), and Bulletproofs over the
+          elliptic curves BLS12-381, BN254, and BLS12-377. For Dory,
+          the industry-standard reference implementation by a16z
+          \cite{a16z_dory} is used directly, as it is the most
+          well-audited and widely adopted codebase for this scheme.
+ 
+    \item \textbf{Benchmarking.} Measure the following metrics for
+          each scheme and curve combination:
+          \begin{itemize}
+              \item Trusted setup time,
+              \item Commitment time,
+              \item Proving time,
+              \item Verification time,
+              \item Scalar multiplication time,
+              \item Pairing operation time,
+              \item Proof size in bytes.
+          \end{itemize}
+ 
+    \item \textbf{MSM Optimisation.} Implement Pippenger's
+          multi-scalar multiplication algorithm and measure how much
+          faster it is compared to the naive approach.
+ 
+    \item \textbf{Analysis.} Use the benchmark data to draw practical
+          conclusions about which scheme and curve combination works
+          best in different application scenarios.
+\end{enumerate}
+ 
+\section{Contributions}
+ 
+The main contributions of this work are:
+ 
+\begin{itemize}
+    \item A unified benchmarking framework that covers KZG, MKZG, and
+          Bulletproofs from scratch implementations, together with
+          Dory via the a16z reference codebase \cite{a16z_dory},
+          enabling fair comparison under identical hardware conditions.
+ 
+    \item A complete set of benchmark results covering every major
+          performance metric, collected under identical hardware
+          conditions.
+ 
+    \item An empirical study of Pippenger's algorithm applied to the
+          MSM sub-routine, which is the dominant cost in most
+          pairing-based schemes.
+ 
+    \item Practical guidance on choosing the right scheme and curve
+          for real applications, backed by measured data rather than
+          asymptotic estimates alone.
+\end{itemize}
+ 
+\section{Thesis Organisation}
+
+\textbf{Chapter~\ref{chap:background}:Background} introduces the
+mathematical foundations: finite fields, elliptic curve arithmetic,
+bilinear pairings, and the three curves used throughout this work
+(BLS12-381, BN254, BLS12-377). It also defines polynomial commitment
+schemes formally and states the security properties each construction
+must satisfy.
+
+\textbf{Chapter~\ref{chap:kzg}:KZG Polynomial Commitment} presents
+the KZG scheme for univariate polynomials. It covers the construction,
+pseudocode, Rust implementation, and benchmark results across all three
+curves, including the impact of Pippenger's MSM optimisation on commit
+and prove time.
+
+\textbf{Chapter~\ref{chap:mkzg}:Multilinear KZG Polynomial
+Commitment} extends KZG to multilinear polynomials. It describes the
+tensor-product SRS construction, the bookkeeping-table witness
+algorithm, and benchmarks showing how setup cost grows exponentially
+in the number of variables $\mu$.
+
+\textbf{Chapter~\ref{chap:bulletproofs}:Bulletproofs} describes
+the transparent, pairing-free commitment scheme based on inner-product
+arguments. The chapter covers the recursive halving construction,
+Pippenger optimisation for commit and prove, and the $O(n)$
+verification cost that limits its practical range.
+
+\textbf{Chapter~\ref{chap:dory}:Dory Polynomial Commitment}
+presents the Dory scheme, which achieves $O(\log n)$ verification
+without a trusted setup using structured $\mathbb{G}_T$ reductions.
+The a16z reference implementation is used and benchmarked across all
+three curves.
+
+\textbf{Chapter~\ref{chap:comparison}:Comparative Analysis}
+brings all four schemes together. It compares setup, commit, prove,
+verify, and proof-size metrics side by side, analyses the effect of
+Pippenger's algorithm and curve choice, and provides concrete guidance
+for selecting the right scheme and curve for a given application.
+

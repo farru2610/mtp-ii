@@ -5,7 +5,7 @@
 \chapter{Dory Polynomial Commitment}
 \label{chap:dory}
 
-Dory was introduced by Jonathan Lee in 2021~\cite{lee2021dory}. It is a
+Dory was introduced by Jonathan Lee in 2021~\cite{dory2021}. It is a
 \emph{transparent} polynomial commitment scheme, meaning it requires no
 trusted setup of any kind. The public parameters are two sequences of random
 group generators that anyone can produce from a public seed, with no secret
@@ -16,7 +16,7 @@ Dory between Bulletproofs and KZG on the transparency-efficiency spectrum.
 
 \section{Dory Construction}
 
-\subsection{Polynomial Representation}
+\textbf{Polynomial Representation:}
 
 A multilinear polynomial $\tilde{f}$ in $\ell = \nu + \sigma$ variables is
 uniquely determined by its $n = 2^\ell$ evaluations on the Boolean hypercube.
@@ -26,8 +26,8 @@ $\mathbf{z} \in \mathbb{F}_r^\ell$ is split into a left Lagrange vector
 $\mathbf{a} \in \mathbb{F}_r^{2^\nu}$ and a right Lagrange vector
 $\mathbf{b} \in \mathbb{F}_r^{2^\sigma}$, so that
 $\tilde{f}(\mathbf{z}) = \mathbf{a}^\top \mathbf{M}\, \mathbf{b}$.
-
-\subsection{Transparent Setup}
+\\
+\textbf{Transparent Setup:}
 
 The setup produces two public sequences of random group generators:
 \begin{align}
@@ -48,8 +48,8 @@ where $\langle \mathbf{u},\mathbf{v}\rangle_T = \sum_i e(u_i, v_i) \in
 \mathbb{G}_T$ is the inner pairing product. These are built incrementally as
 $\chi^{(k)} = \chi^{(k-1)} + \langle \Gamma_1[2^{k-1}..2^k],\,
 \Gamma_2[2^{k-1}..2^k]\rangle_T$, costing $O(n)$ pairings in total.
-
-\subsection{Commitment}
+\\
+\textbf{Commitment:}
 
 Dory uses a two-tier AFGHO homomorphic commitment. Each row $i$ of
 $\mathbf{M}$ is first committed in $\mathbb{G}_1$:
@@ -65,8 +65,8 @@ element:
 \end{equation}
 The commitment is a single $\mathbb{G}_T$ element and is linearly homomorphic
 in the polynomial coefficients.
-
-\subsection{Evaluation Proof}
+\\
+\textbf{Evaluation Proof:}
 
 To prove $\tilde{f}(\mathbf{z}) = v$, the prover first sends a VMV
 (vector-matrix-vector) message consisting of three elements:
@@ -83,8 +83,8 @@ To prove $\tilde{f}(\mathbf{z}) = v$, the prover first sends a VMV
 \end{itemize}
 In transparent mode, the verifier computes $E_2 = v\cdot g_{2,\mathrm{fin}}$
 directly from the claimed evaluation without any extra message.
-
-\subsection{Reduce-and-Fold (Protocol 14)}
+\\
+\textbf{Reduce-and-Fold (Protocol 14):}
 
 The main argument reduces the VMV claim to a single inner pairing product
 check through $\sigma$ rounds. Each round halves the current vector length.
@@ -116,8 +116,8 @@ $\Delta_L^{(i)}$, $\Delta_R^{(i)}$, and the round messages.
 \textbf{Final check:} After $\sigma$ rounds both vectors reduce to scalars.
 The verifier executes a single batched multi-pairing equation over all four
 accumulated values.
-
-\subsection{Proof Size}
+\\
+\textbf{Proof Size:}
 
 Each reduce-and-fold round contributes one first sub-message
 (four $\mathbb{G}_T$, one $\mathbb{G}_1$, one $\mathbb{G}_2$) and one second
@@ -191,16 +191,16 @@ than KZG or Bulletproofs due to the $\mathbb{G}_T$ elements.
 
 \textbf{This implementation is not the author's own work.} The codebase used
 throughout this chapter is the open-source reference library published by
-a16z crypto~\cite{a16z2022dory}, itself inspired by the Space and Time Labs
+a16z crypto~\cite{a16z_dory}, itself inspired by the Space and Time Labs
 proof-of-concept. It is the most well-audited publicly available Dory
 implementation and is written in Rust using the \texttt{arkworks}
 library~\cite{arkworks}, with modular backends for BLS12-381, BN254, and
 BLS12-377.
 
 The benchmark driver \texttt{src/bin/bench\_dory.rs} was written as part of
-this thesis work to uniformly measure every metric---setup, commit, prove,
+this thesis work to uniformly measure every metric setup, commit, prove,
 verify, pairing cost, $\mathbb{G}_1$ and $\mathbb{G}_2$ MSM cost, and proof
-size---in transparent mode and under identical conditions to the other three
+size n transparent mode and under identical conditions to the other three
 schemes. It exercises the library's public \texttt{setup}, \texttt{prove},
 and \texttt{verify} API without any modification to the core library code.
 
@@ -266,8 +266,8 @@ additional $\sigma$ round therefore adds
 $6\times576 + 3\times48 + 3\times96 = 3\,888$ bytes. For BN-254
 ($|\mathbb{G}_T| = 384$, $|\mathbb{G}_1| = 32$, $|\mathbb{G}_2| = 64$) it
 adds $6\times384 + 3\times32 + 3\times64 = 2\,592$ bytes.
-
-\section{Benchmark Setup}
+\\\\
+\textbf{Benchmark Setup:}
 
 Benchmarks are averaged over 5 runs. Sizes tested:
 $n \in \{4, 8, 16, 32, 64, 128, 256, 512, 1024\}$.
@@ -281,7 +281,7 @@ on random points and generators.
 
 \section{Benchmark Results}
 
-\subsection{Base Operations and Proof Size}
+\textbf{Base Operations and Proof Size:}
 
 \begin{table}[H]
 \centering
@@ -331,7 +331,7 @@ $n$ & $(\nu,\sigma)$ & \textbf{BLS12-381} & \textbf{BN-254} & \textbf{BLS12-377}
 \end{tabular}
 \end{table}
 
-\subsection{Setup and Commit Time}
+\textbf{Setup and Commit Time:}
 
 \begin{table}[H]
 \centering
@@ -368,8 +368,8 @@ structured reference string.
 Commit time is dominated by the $2^\nu$ row MSMs of size $2^\sigma$ each,
 totalling $O(n)$ scalar multiplications, and grows sub-linearly thanks to
 Pippenger's algorithm inside each MSM call.
-
-\subsection{Prove and Verify Time}
+\\
+\textbf{Prove and Verify Time:}
 
 \begin{table}[H]
 \centering
@@ -409,6 +409,14 @@ verify time even decreases slightly from $n$ to $2n$ when $\sigma$ does not
 change, due to measurement noise. At $n = 1024$ on BLS12-381 verification
 takes 95.8~ms, about $25\times$ slower than KZG (3.8~ms) but $5\times$
 faster than Bulletproofs (496~ms) at the same size.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{chapter6/combined_bls12_381}
+\caption{Dory benchmark results on BLS12-381: setup, commit, prove,
+and verify time (ms) vs.\ polynomial size $n$ (log--log scale).}
+\label{fig:dory-combined-bls12381}
+\end{figure}
 
 \section{Discussion and Summary}
 

@@ -1,0 +1,717 @@
+% ============================================================
+%  CHAPTER 7: Comparative Analysis
+% ============================================================
+
+\chapter{Comparative Analysis}
+\label{chap:comparison}
+
+The preceding chapters examined KZG (Chapter~\ref{chap:kzg}),
+Multilinear KZG (Chapter~\ref{chap:mkzg}),
+Bulletproofs (Chapter~\ref{chap:bulletproofs}), and
+Dory (Chapter~\ref{chap:dory}) each in isolation. This chapter brings
+all four schemes together and analyses them side by side across every
+benchmarked metric: setup time, commitment time, proving time,
+verification time, proof size, and the impact of
+Pippenger's multi-scalar multiplication optimisation. All benchmark
+results were collected on the same machine under identical conditions
+using Rust and the \texttt{arkworks} library, with sizes ranging from
+$n = 4$ to $n = 1024$ field elements and the three curves
+BLS12-381, BN254, and BLS12-377.
+
+A key point before comparing: the four schemes do not commit to
+identical mathematical objects. KZG commits to a univariate polynomial
+of degree $d$; MKZG commits to a multilinear polynomial in $\mu$
+variables; Bulletproofs and Dory commit to a vector of $n$ scalars
+(equivalently, a multilinear polynomial in $\log_2 n$ variables).
+Throughout this chapter, ``size $n$'' means: the degree bound $d = n$
+for KZG, the number of variables $\mu = \log_2 n$ (poly size $2^\mu = n$)
+for MKZG, and the vector length $n$ for Bulletproofs and Dory. In all
+cases the prover holds approximately $n$ field elements, making the
+comparison on equal footing with respect to the committed data volume.
+
+
+
+% ============================================================
+\section{Setup Time}
+\label{sec:setup-comparison}
+% ============================================================
+
+Table~\ref{tab:setup-all} shows setup times across all four schemes.
+KZG computes $n$ powers of $\tau$ in $\mathbb{G}_1$ and $\mathbb{G}_2$;
+MKZG evaluates the multilinear Lagrange basis at a secret point;
+Bulletproofs hashes $n$ random curve points; and Dory generates
+random generators and precomputes $O(\log n)$ inner pairing products.
+
+\begin{table}[H]
+\centering
+\caption{Setup time (ms) at representative sizes. KZG: degree $n$;
+MKZG: $\mu = \log_2 n$ variables; Bulletproofs/Dory: vector length $n$.}
+\label{tab:setup-all}
+\adjustbox{max width=\textwidth}{%
+\begin{tabular}{rlrrrrrrrrrrrr}
+\toprule
+& & \multicolumn{3}{c}{\textbf{KZG}}
+  & \multicolumn{3}{c}{\textbf{MKZG}}
+  & \multicolumn{3}{c}{\textbf{Bulletproofs}}
+  & \multicolumn{3}{c}{\textbf{Dory}} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
+$n$ & & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+4    & & 6.10   & 2.46  & 5.70   & 3.10  & 1.37  & 2.75  & 0.65  & 0.09  & 0.62  & 14.13 & 7.08  & 14.43 \\
+16   & & 18.31  & 10.49 & 19.03  & 7.46  & 3.80  & 7.06  & 2.19  & 0.38  & 2.35  & 20.89 & 11.44 & 25.15 \\
+64   & & 69.46  & 32.35 & 76.58  & 19.05 & 10.41 & 19.62 & 8.05  & 1.22  & 9.67  & 37.90 & 19.34 & 42.89 \\
+256  & & 240.85 & 129.52 & 296.95 & 61.34 & 35.10 & 65.08 & 37.49 & 5.46  & 37.06 & 63.80 & 33.50 & 73.61 \\
+1024 & & 1027.47 & 544.87 & 1156.37 & 235.94 & 129.63 & 239.44 & 154.91 & 18.36 & 149.98 & 110.96 & 57.59 & 126.04 \\
+\bottomrule
+\end{tabular}}%
+\end{table}
+
+\textbf{KZG has the most expensive setup.} At $n = 1024$ on BLS12-381,
+KZG takes 1027\,ms, which is $4.4\times$ more than MKZG (236\,ms),
+$6.6\times$ more than Bulletproofs (155\,ms), and $9.3\times$ more
+than Dory (111\,ms). KZG must compute $n+1$ structured powers
+$[\tau^i]_1$ with all distinct scalars, whereas MKZG uses $n$
+fixed-base scalar multiplications on the same generator $g_1$,
+allowing window-table precomputation to be reused across all $n$
+multiplications. This fixed-base advantage accounts for MKZG's
+$4.4\times$ lower constant despite both being $O(n)$.
+Bulletproofs setup (18\,ms on BN254 at $n = 1024$) is negligible,
+consisting only of $n$ random point hashes; Dory is cheapest among
+pairing schemes as it uses unstructured generators.
+
+\textbf{MKZG setup is exponential in the number of variables.}
+The table rows use poly\-size $n = 2^{\mu}$, so setup appears linear
+in $n$, but it is \emph{exponential in $\mu$}: each extra variable
+doubles the SRS size and cost. The rows $n = 4, 16, 64, 256, 1024$
+correspond to $\mu = 2, 4, 6, 8, 10$ variables; eight more variables
+grows the SRS $256\times$ (from 4 to 1024 elements) and setup from
+3.10\,ms to 235.94\,ms on BLS12-381. Extrapolating: $\mu = 20$
+requires $2^{20} \approx 10^6$ group elements ($\approx 242$\,GB),
+and $\mu = 30$ exceeds 240\,TB, making unoptimised MKZG impractical
+beyond $\mu \approx 20$--$24$.
+
+\textbf{BN254 is consistently fastest.} BN254 is $\approx 1.9\times$
+faster than BLS12-381 for KZG/MKZG/Dory, and over $8\times$ faster
+for Bulletproofs setup (where cost is dominated by point hashing,
+which scales with byte length rather than field arithmetic).
+
+% ============================================================
+\section{Commitment Time}
+\label{sec:commit-comparison}
+% ============================================================
+
+The commitment operation in all four schemes reduces to a
+multi-scalar multiplication (MSM) of size $n$. Consequently,
+Pippenger's algorithm has the most direct and uniform impact here.
+
+
+\begin{table}[H]
+\centering
+\caption{Commit time (ms) at representative sizes with Pippenger.}
+\label{tab:commit-all}
+\adjustbox{max width=\textwidth}{%
+\begin{tabular}{rlrrrrrrrrrrrr}
+\toprule
+& & \multicolumn{3}{c}{\textbf{KZG}}
+  & \multicolumn{3}{c}{\textbf{MKZG}}
+  & \multicolumn{3}{c}{\textbf{Bulletproofs}}
+  & \multicolumn{3}{c}{\textbf{Dory}} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
+$n$ & & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+4    & & 0.83  & 0.39  & 0.74  & 0.68  & 0.36  & 0.58  & 0.76  & 0.40  & 0.63  & 2.72  & 1.93  & 3.29  \\
+16   & & 1.68  & 1.46  & 1.68  & 1.33  & 0.80  & 1.38  & 1.42  & 0.70  & 1.62  & 6.11  & 3.16  & 6.03  \\
+64   & & 4.32  & 2.12  & 4.69  & 4.10  & 2.27  & 4.13  & 3.92  & 1.86  & 4.34  & 13.39 & 6.71  & 13.66 \\
+256  & & 12.86 & 6.52  & 13.94 & 12.04 & 6.21  & 12.12 & 12.98 & 5.25  & 13.68 & 33.66 & 17.16 & 34.27 \\
+1024 & & 40.37 & 20.88 & 42.00 & 39.48 & 20.06 & 39.05 & 39.05 & 15.41 & 39.98 & 90.96 & 49.25 & 101.81 \\
+\bottomrule
+\end{tabular}}%
+\end{table}
+
+\textbf{KZG, MKZG, and Bulletproofs commit in nearly identical time.}
+At $n = 1024$ on BLS12-381, all three take 39--41\,ms with Pippenger
+enabled. This is expected: all three compute a single MSM of $n$
+elements in $\mathbb{G}_1$, so the commit cost is determined purely by
+the MSM cost. The near-identical values directly validate that
+Pippenger's algorithm dominates and the scheme-specific overhead is
+negligible.
+
+\textbf{Dory commit is roughly $2.3\times$ more expensive.} At
+$n = 1024$ on BLS12-381, Dory takes 91\,ms compared to $\approx$40\,ms
+for the other three. Dory's commitment involves $2^\nu$ row MSMs of
+size $2^\sigma$ each (total $O(n)$ scalar multiplications), followed by
+a second-tier MSM and a pairing. The additional $\mathbb{G}_T$ pairing
+at the end accounts for most of the overhead vs.\ the pure
+$\mathbb{G}_1$ MSM of the other schemes.
+
+\textbf{The BN254 advantage is $\approx 1.9\times$ for most schemes.}
+Across KZG, MKZG, and Bulletproofs at $n = 1024$, BN254 is
+$1.93\times$, $1.97\times$, and $2.53\times$ faster than BLS12-381
+respectively. Bulletproofs shows a larger BN254 advantage because its
+commit implementation uses integer-only point hashing paths that
+benefit more from BN254's smaller field size.
+
+% ============================================================
+\section{Proving Time}
+\label{sec:prove-comparison}
+% ============================================================
+
+Proving time is where the four schemes diverge most.
+Tables~\ref{tab:prove-all} and~\ref{tab:prove-ratio} report raw times
+and ratios relative to KZG on BLS12-381.
+
+\begin{table}[H]
+\centering
+\caption{Prove time (ms) at representative sizes.}
+\label{tab:prove-all}
+\adjustbox{max width=\textwidth}{%
+\begin{tabular}{rlrrrrrrrrrrrr}
+\toprule
+& & \multicolumn{3}{c}{\textbf{KZG (Pip)}}
+  & \multicolumn{3}{c}{\textbf{MKZG}}
+  & \multicolumn{3}{c}{\textbf{Bulletproofs (Pip)}}
+  & \multicolumn{3}{c}{\textbf{Dory}} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
+$n$ & & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+4    & & 0.67  & 0.31  & 0.76  & 1.07  & 0.67  & 0.91  & 3.34  & 1.70  & 3.01  & 22.92 & 15.36 & 27.74 \\
+16   & & 1.66  & 1.52  & 1.62  & 4.63  & 2.43  & 4.70  & 10.66 & 6.38  & 11.77 & 45.77 & 28.64 & 55.45 \\
+64   & & 4.46  & 2.30  & 5.23  & 17.61 & 9.49  & 18.43 & 38.90 & 21.81 & 43.59 & 89.20 & 51.62 & 104.92 \\
+256  & & 12.19 & 6.84  & 15.35 & 72.18 & 36.78 & 71.17 & 142.95 & 84.38 & 158.03 & 219.85 & 92.87 & 182.57 \\
+1024 & & 42.10 & 23.51 & 46.16 & 263.37 & 149.15 & 272.35 & 650.35 & 415.67 & 582.06 & 264.31 & 173.06 & 309.89 \\
+\bottomrule
+\end{tabular}}%
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Prove time ratio relative to KZG on BLS12-381 at each size.
+A ratio of $k$ means the scheme takes $k\times$ longer to prove than KZG.}
+\label{tab:prove-ratio}
+\begin{tabular}{rllll}
+\toprule
+$n$ & \textbf{KZG} & \textbf{MKZG} & \textbf{Bulletproofs} & \textbf{Dory} \\
+\midrule
+4    & $1\times$  & $1.6\times$  & $5.0\times$   & $34.3\times$ \\
+16   & $1\times$  & $2.8\times$  & $6.4\times$   & $27.6\times$ \\
+64   & $1\times$  & $3.9\times$  & $8.7\times$   & $20.0\times$ \\
+256  & $1\times$  & $5.9\times$  & $11.7\times$  & $18.0\times$ \\
+1024 & $1\times$  & $6.3\times$  & $15.4\times$  & $6.3\times$  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{KZG} is fastest: a single $O(n)$ MSM for the quotient
+polynomial gives 42\,ms at $n = 1024$ on BLS12-381.
+
+\textbf{MKZG and Dory} both land near 264\,ms at $n = 1024$
+($6.3\times$ KZG). MKZG performs $\mu$ MSMs of halving size ($O(n\log n)$
+total); Dory runs $\sigma = 5$ fold rounds of row MSMs, also $O(n\log n)$
+in practice. Dory starts at $34\times$ KZG at $n = 4$ (fixed round
+overhead dominates) but converges to $6\times$ as $n$ grows and the
+$O(n)$ row MSMs become the dominant cost.
+
+\textbf{Bulletproofs} is the slowest prover: 650\,ms at $n = 1024$
+($15.4\times$ KZG). Its $\log_2 n = 10$ halving rounds each require
+two MSMs, totalling $2n - 2$ scalar multiplications with no shared
+structure to batch.
+
+% ============================================================
+\section{Verification Time}
+\label{sec:verify-comparison}
+% ============================================================
+
+Tables~\ref{tab:verify-all} and~\ref{tab:verify-ratio} show
+verification times and their ratio relative to KZG.
+
+\begin{table}[H]
+\centering
+\caption{Verify time (ms) at representative sizes.}
+\label{tab:verify-all}
+\adjustbox{max width=\textwidth}{%
+\begin{tabular}{rlrrrrrrrrrrrr}
+\toprule
+& & \multicolumn{3}{c}{\textbf{KZG (Pip)}}
+  & \multicolumn{3}{c}{\textbf{MKZG}}
+  & \multicolumn{3}{c}{\textbf{Bulletproofs (Pip)}}
+  & \multicolumn{3}{c}{\textbf{Dory}} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
+$n$ & & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+4    & & 4.75  & 2.65  & 4.82  & 6.41  & 4.85  & 6.79  & 2.53  & 1.46  & 2.73  & 29.35 & 24.45 & 33.11 \\
+16   & & 4.29  & 3.90  & 4.74  & 10.35 & 6.96  & 11.61 & 8.37  & 5.59  & 9.14  & 45.38 & 29.70 & 56.15 \\
+64   & & 4.01  & 2.77  & 7.85  & 13.88 & 9.76  & 16.65 & 29.77 & 17.10 & 34.16 & 71.09 & 42.03 & 76.57 \\
+256  & & 3.58  & 2.53  & 4.38  & 17.97 & 12.37 & 21.42 & 116.46 & 64.82 & 120.30 & 81.63 & 54.69 & 92.02 \\
+1024 & & 3.81  & 2.53  & 4.65  & 21.85 & 15.98 & 26.61 & 496.26 & 329.64 & 499.11 & 95.82 & 61.90 & 112.07 \\
+\bottomrule
+\end{tabular}}%
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Verify time ratio relative to KZG (Pip) on BLS12-381 at each size.}
+\label{tab:verify-ratio}
+\begin{tabular}{rllll}
+\toprule
+$n$ & \textbf{KZG (Pip)} & \textbf{MKZG} & \textbf{Bulletproofs (Pip)} & \textbf{Dory} \\
+\midrule
+4    & $1\times$ & $1.3\times$  & $0.5\times$  & $6.2\times$  \\
+16   & $1\times$ & $2.4\times$  & $2.0\times$  & $10.6\times$ \\
+64   & $1\times$ & $3.5\times$  & $7.4\times$  & $17.7\times$ \\
+256  & $1\times$ & $5.0\times$  & $32.5\times$ & $22.8\times$ \\
+1024 & $1\times$ & $5.7\times$  & $130.3\times$ & $25.1\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{KZG} verifies in exactly two pairings: 3.6--4.8\,ms on
+BLS12-381, flat across all $n$. This $O(1)$ cost is its defining
+advantage.
+
+\textbf{MKZG} requires $\mu + 1$ pairings ($O(\log n)$). At
+$\approx 1.90$\,ms per pairing on BLS12-381, the expected costs are
+$3 \times 1.90 = 5.70$\,ms at $n = 4$ (observed: 6.41\,ms) and
+$11 \times 1.90 = 20.9$\,ms at $n = 1024$ (observed: 21.85\,ms).
+Even at $n = 16384$ ($\mu = 14$) verify takes only $\approx$33\,ms.
+
+\textbf{Dory} is also $O(\log n)$ but with a higher constant: 95.8\,ms
+at $n = 1024$ on BLS12-381 ($25\times$ KZG). Each of the $\sigma = 5$
+fold rounds involves $\mathbb{G}_T$ arithmetic (six 576-byte elements
+per round), which is costlier than MKZG's $\mathbb{G}_2$ pairings.
+
+\textbf{Bulletproofs} verify is $O(n)$ and impractical at scale:
+496\,ms at $n = 1024$ on BLS12-381 ($130\times$ KZG). Verify grows
+$\approx 196\times$ from $n = 4$ to $n = 1024$, consistent with
+linear scaling.
+
+
+% ============================================================
+\section{Proof Size}
+\label{sec:proofsize-comparison}
+% ============================================================
+
+Table~\ref{tab:proofsize-all} gives proof sizes across all schemes.
+The four schemes span a $433\times$ range at $n = 1024$ on BLS12-381:
+\[
+\text{KZG}\ (48\,\text{B})\ \ll\ \text{MKZG}\ (480\,\text{B})\ <\
+\text{Bulletproofs}\ (2{,}216\,\text{B})\ \ll\ \text{Dory}\ (20{,}784\,\text{B}).
+\]
+
+\begin{table}[H]
+\centering
+\caption{Proof size (bytes) at representative sizes.
+KZG: one $\mathbb{G}_1$ element ($O(1)$);
+MKZG: $\mu$ elements ($O(\log n)$);
+Bulletproofs: $2\log_2 n + 1$ elements ($O(\log n)$);
+Dory: $\sigma$ rounds of $\mathbb{G}_T$, $\mathbb{G}_1$, $\mathbb{G}_2$ elements ($O(\log n)$).}
+\label{tab:proofsize-all}
+\adjustbox{max width=\textwidth}{%
+\begin{tabular}{rlrrrrrrrrrrrr}
+\toprule
+& & \multicolumn{3}{c}{\textbf{KZG}}
+  & \multicolumn{3}{c}{\textbf{MKZG}}
+  & \multicolumn{3}{c}{\textbf{Bulletproofs}}
+  & \multicolumn{3}{c}{\textbf{Dory}} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
+$n$ & & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377}
+    & \textbf{381} & \textbf{254} & \textbf{377} \\
+\midrule
+4    & & 48   & 32   & 48   & 96   & 64   & 96   & 552   & 392   & 552   & 5\,232  & 3\,488  & 5\,232  \\
+16   & & 48   & 32   & 48   & 192  & 128  & 192  & 968   & 680   & 968   & 9\,120  & 6\,080  & 9\,120  \\
+64   & & 48   & 32   & 48   & 288  & 192  & 288  & 1\,384 & 968  & 1\,384 & 13\,008 & 8\,672  & 13\,008 \\
+256  & & 48   & 32   & 48   & 384  & 256  & 384  & 1\,800 & 1\,256 & 1\,800 & 16\,896 & 11\,264 & 16\,896 \\
+1024 & & 48   & 32   & 48   & 480  & 320  & 480  & 2\,216 & 1\,544 & 2\,216 & 20\,784 & 13\,856 & 20\,784 \\
+\bottomrule
+\end{tabular}}%
+\end{table}
+
+\textbf{KZG} produces a constant 48\,B (BLS12-381/377) or 32\,B
+(BN254) proof regardless of degree: a single $\mathbb{G}_1$ quotient
+commitment checked via one pairing identity.
+
+\textbf{MKZG} adds one $\mathbb{G}_1$ element per variable, giving
+$\mu \times 48$\,B on BLS12-381 (96\,B at $\mu=2$, 480\,B at $\mu=10$,
+672\,B at $\mu=14$). Still compact, though logarithmically growing.
+
+\textbf{Bulletproofs} sends $2\log_2 n$ group elements ($V_L, V_R$
+per round) plus a final element and scalar: 552\,B at $n=4$ growing
+to 2\,216\,B at $n=1024$ on BLS12-381, which is $46\times$ larger than
+KZG.
+
+\textbf{Dory} is the largest by a wide margin. Each of the
+$\sigma = 5$ fold rounds contributes six $\mathbb{G}_T$ elements
+(576\,B each on BLS12-381, vs.\ 48\,B for $\mathbb{G}_1$), giving
+20\,784\,B at $n=1024$, which is $433\times$ larger than KZG and
+$9.4\times$ larger than Bulletproofs. BLS12-381 and BLS12-377 proofs
+are identical (same $\mathbb{F}_{p^{12}}$ extension); BN254 is
+$33\%$ smaller throughout.
+
+% ============================================================
+\section{Impact of Pippenger's MSM Optimisation}
+\label{sec:pippenger-comparison}
+% ============================================================
+
+Pippenger's multi-scalar multiplication algorithm replaces the naive
+$n$ individual scalar multiplications with a batched computation that
+has empirical complexity roughly $O(n / \log n)$. This section
+quantifies the impact of this optimisation on both KZG and
+Bulletproofs, where the naive baseline is directly available.
+
+\subsection{Impact on KZG}
+
+Table~\ref{tab:pip-kzg} shows the commit and prove times for KZG with
+and without Pippenger, and the speedup ratio.
+
+\begin{table}[H]
+\centering
+\caption{Pippenger speedup for KZG commit and prove time on BLS12-381.}
+\label{tab:pip-kzg}
+\adjustbox{max width=\textwidth}{%
+\begin{tabular}{rlllllll}
+\toprule
+& & \multicolumn{3}{c}{\textbf{Commit (ms)}}
+  & \multicolumn{3}{c}{\textbf{Prove (ms)}} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+$n$ & & \textbf{Naive} & \textbf{Pip} & \textbf{Speedup}
+    & \textbf{Naive} & \textbf{Pip} & \textbf{Speedup} \\
+\midrule
+4    & & 1.25  & 0.83  & $1.5\times$ & 1.04  & 0.67  & $1.5\times$ \\
+16   & & 3.59  & 1.68  & $2.1\times$ & 3.70  & 1.66  & $2.2\times$ \\
+64   & & 14.86 & 4.32  & $3.4\times$ & 15.42 & 4.46  & $3.5\times$ \\
+256  & & 56.46 & 12.86 & $4.4\times$ & 56.04 & 12.19 & $4.6\times$ \\
+1024 & & 240.78 & 40.37 & $6.0\times$ & 239.35 & 42.10 & $5.7\times$ \\
+\bottomrule
+\end{tabular}}%
+\end{table}
+
+The speedup grows monotonically with $n$: from $1.5\times$ at $n = 4$
+to $6.0\times$ at $n = 1024$. This is precisely the expected behaviour
+of Pippenger's algorithm, whose advantage over naive MSM grows as
+$O(\log n)$. At $n = 4$ there are too few scalars for bucketing to
+help, and the overhead of Pippenger's bucket sort marginally reduces
+the gap. At $n = 1024$, the $6\times$ speedup is consistent with the
+theoretical prediction of $n / \log_b(n) \approx 1024 / \log_2(1024)
+= 102$ operations with window size $b \approx 12$, though in practice
+memory effects and implementation overhead reduce this to $6\times$.
+
+
+\begin{table}[H]
+\centering
+\caption{Pippenger speedup for KZG commit at $n = 1024$ across curves.}
+\label{tab:pip-kzg-curves}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Curve} & \textbf{Naive (ms)} & \textbf{Pip (ms)} & \textbf{Speedup} \\
+\midrule
+BLS12-381 & 240.78 & 40.37 & $6.0\times$ \\
+BN254     & 123.56 & 20.88 & $5.9\times$ \\
+BLS12-377 & 233.76 & 42.00 & $5.6\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The speedup is consistent across curves: all three achieve
+$5.6$--$6.0\times$ at $n = 1024$. The slightly lower speedup on
+BLS12-377 may be due to the larger field modulus (377-bit vs.\
+381-bit) interacting with the bucket reduction step of Pippenger's
+algorithm.
+
+\subsection{Impact on Bulletproofs}
+
+For Bulletproofs, Pippenger's algorithm most directly benefits the
+commitment step, which is a single size-$n$ MSM identical in structure
+to KZG commit.
+
+\begin{table}[H]
+\centering
+\caption{Pippenger speedup for Bulletproofs commit on BLS12-381.}
+\label{tab:pip-bp-381}
+\begin{tabular}{rllll}
+\toprule
+$n$ & \textbf{Naive (ms)} & \textbf{Pip (ms)} & \textbf{Speedup} \\
+\midrule
+16   & 3.90   & 1.42  & $2.8\times$ \\
+64   & 18.48  & 3.92  & $4.7\times$ \\
+256  & 55.79  & 12.98 & $4.3\times$ \\
+1024 & 227.10 & 39.05 & $5.8\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{table}[H]
+\centering
+\caption{Pippenger speedup for Bulletproofs commit at $n = 1024$ across curves.}
+\label{tab:pip-bp-curves}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Curve} & \textbf{Naive (ms)} & \textbf{Pip (ms)} & \textbf{Speedup} \\
+\midrule
+BLS12-381 & 227.10 & 39.05 & $5.8\times$ \\
+BN254     & 155.18 & 15.41 & $10.1\times$ \\
+BLS12-377 & 248.82 & 39.98 & $6.2\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The BN254 commit speedup of $10.1\times$ at $n = 1024$ is notably
+larger than for BLS12-381/377. This is because BN254's 254-bit scalars
+allow Pippenger to use larger effective window sizes for the same
+memory budget, and BN254's faster field arithmetic amplifies the
+benefit of each bucket operation. This is the largest single Pippenger
+speedup observed in all benchmarks.
+
+
+% ============================================================
+\section{Curve Comparison}
+\label{sec:curve-comparison}
+% ============================================================
+
+The three curves differ in field size (254, 381, 377 bits) and pairing
+efficiency. BN254 has a somewhat lower security margin under recent
+attacks; BLS12-381 and BLS12-377 offer nominally 128-bit security.
+\\\\
+\textbf{BN254 vs.\ BLS12-381:}
+
+\begin{table}[H]
+\centering
+\caption{BN254 speedup over BLS12-381 at $n = 1024$
+(value $> 1$ means BN254 is faster).}
+\label{tab:curve-ratio}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Metric} & \textbf{KZG} & \textbf{MKZG} & \textbf{BP} & \textbf{Dory} \\
+\midrule
+Setup    & $1.89\times$ & $1.82\times$ & $8.44\times$ & $1.93\times$ \\
+Commit   & $1.93\times$ & $1.97\times$ & $2.53\times$ & $1.85\times$ \\
+Prove    & $1.79\times$ & $1.77\times$ & $1.56\times$ & $1.53\times$ \\
+Verify   & $1.51\times$ & $1.37\times$ & $1.51\times$ & $1.55\times$ \\
+Proof    & $1.50\times$ & $1.50\times$ & $1.44\times$ & $1.50\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+BN254 is $1.5$--$1.9\times$ faster for pairing-heavy operations and
+$\approx 2\times$ faster for commit/setup across KZG, MKZG, and Dory.
+The outlier is Bulletproofs setup ($8.4\times$): BN254 affine
+coordinates are 64 bytes vs.\ 96 bytes for BLS12-381, halving
+point-hashing overhead. Proof sizes are uniformly $1.5\times$ smaller
+on BN254 (32-byte vs.\ 48-byte $\mathbb{G}_1$ elements), a purely
+geometric $3:2$ ratio across all schemes.
+\\\\
+\textbf{BLS12-381 vs.\ BLS12-377:}
+
+\begin{table}[H]
+\centering
+\caption{BLS12-381 speedup over BLS12-377 at $n = 1024$.}
+\label{tab:curve-ratio-377}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Metric} & \textbf{KZG} & \textbf{MKZG} & \textbf{BP} & \textbf{Dory} \\
+\midrule
+Setup  & $1.13\times$ & $1.01\times$ & $0.97\times$ & $1.14\times$ \\
+Commit & $1.04\times$ & $0.99\times$ & $1.02\times$ & $1.12\times$ \\
+Prove  & $1.10\times$ & $1.03\times$ & $0.89\times$ & $1.17\times$ \\
+Verify & $1.22\times$ & $1.22\times$ & $1.01\times$ & $1.17\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The two curves are remarkably close. BLS12-381 is $1.01$--$1.22\times$
+faster overall; the largest gap is verification ($1.22\times$ for KZG
+and MKZG) because BLS12-381 was optimised for pairing computation,
+while BLS12-377 was designed as the inner curve for the ZEXE recursive
+SNARK stack. For MSM-only operations, MKZG setup and commit differ by
+at most $1.01\times$, well within noise.
+
+Notably, Bulletproofs reverses the trend: BLS12-377 is faster in both
+setup ($0.97\times$: 150.0\,ms vs.\ 154.9\,ms) and prove ($0.89\times$:
+582.1\,ms vs.\ 650.4\,ms), since Bulletproofs uses only
+$\mathbb{G}_1$ scalar multiplications and BLS12-377's 377-bit field
+gives marginally more efficient MSM arithmetic without pairings.
+Proof sizes are identical (both use 48-byte $\mathbb{G}_1$ points).\\\\
+\textbf{Curve Selection Guidance:}
+
+Choose \textbf{BN254} for best latency and smallest proofs when
+128-bit security (under current attacks) is acceptable.
+Choose \textbf{BLS12-381} for a higher security margin or Ethereum
+precompile compatibility, at an $\approx 1.9\times$ performance cost
+over BN254. Choose \textbf{BLS12-377} when recursive SNARK
+composability is required. Its performance is near-identical to
+BLS12-381.
+
+
+
+
+% ============================================================
+\section{Overall Scheme Comparison}
+\label{sec:overall}
+% ============================================================
+
+Table~\ref{tab:overall-n1024} provides a side-by-side summary of all
+benchmarked metrics at the largest tested size ($n = 1024$, or
+$\mu = 10$ for MKZG) on BLS12-381, using Pippenger for KZG and
+Bulletproofs.
+
+\begin{table}[H]
+\centering
+\caption{Full performance summary at $n = 1024$ on BLS12-381.}
+\label{tab:overall-n1024}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Metric} & \textbf{KZG} & \textbf{MKZG} & \textbf{Bulletproofs} & \textbf{Dory} \\
+\midrule
+Setup (ms)      & 1027.5 & 235.9  & 154.9   & 111.0  \\
+Commit (ms)     & 40.4   & 39.5   & 39.1    & 91.0   \\
+Prove (ms)      & 42.1   & 263.4  & 650.4   & 264.3  \\
+Verify (ms)     & 3.8    & 21.9   & 496.3   & 95.8   \\
+Proof (bytes)   & 48     & 480    & 2\,216  & 20\,784 \\
+Trusted setup   & Yes    & Yes    & No      & No     \\
+Polynomial type & Univar.& Multilin.& Vector & Multilin. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Full performance summary at $n = 1024$ on BN254.}
+\label{tab:overall-n1024-bn254}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Metric} & \textbf{KZG} & \textbf{MKZG} & \textbf{Bulletproofs} & \textbf{Dory} \\
+\midrule
+Setup (ms)      & 544.9  & 129.6  & 18.4    & 57.6   \\
+Commit (ms)     & 20.9   & 20.1   & 15.4    & 49.3   \\
+Prove (ms)      & 23.5   & 149.2  & 415.7   & 173.1  \\
+Verify (ms)     & 2.5    & 16.0   & 329.6   & 61.9   \\
+Proof (bytes)   & 32     & 320    & 1\,544  & 13\,856 \\
+Trusted setup   & Yes    & Yes    & No      & No     \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figures~\ref{fig:combined-bls12381} and~\ref{fig:combined-bn254} plot
+setup, commit, prove, and verify times on a log scale for all four
+schemes across the full size range $n = 4$ to $n = 16{,}384$,
+complementing the tabular summaries above.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{"../Final Graphs/plots/BLS12381_combined"}
+\caption{All four schemes on BLS12-381: setup, commit, prove, and verify
+time (ms, log scale) vs.\ polynomial size $n$.}
+\label{fig:combined-bls12381}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{"../Final Graphs/plots/BN254_combined"}
+\caption{All four schemes on BN254: setup, commit, prove, and verify
+time (ms, log scale) vs.\ polynomial size $n$.}
+\label{fig:combined-bn254}
+\end{figure}
+
+% ============================================================
+\section{Practical Recommendations}
+\label{sec:recommendations}
+% ============================================================
+
+\begin{itemize}
+    \item \textbf{Univariate SNARKs:} Use \textbf{KZG on BN254} with
+          Pippenger. It gives 32\,B proofs, 2.5\,ms verification, and
+          a prover $6$--$15\times$ faster than all alternatives. The
+          trusted setup is a one-time multi-party ceremony.
+
+    \item \textbf{Multilinear commitments (Spartan, HyperPlonk):}
+          Use \textbf{MKZG on BN254} if a trusted setup is acceptable
+          (16\,ms verify, 320\,B proof at $\mu = 10$). Otherwise use
+          \textbf{Dory}: $O(\log n)$ verification without a trusted
+          setup. Avoid Bulletproofs above $n = 64$; its $O(n)$ verify
+          becomes prohibitive.
+
+    \item \textbf{On-chain / proof-size critical:} Use \textbf{KZG on
+          BN254}. Its 32\,B proof is $46\times$ smaller than
+          Bulletproofs and $433\times$ smaller than Dory; BN254 is
+          directly supported by Ethereum precompiles.
+
+    \item \textbf{Pairing-free environments:} Use \textbf{Bulletproofs};
+          it requires only $\mathbb{G}_1$ operations, unlike Dory which
+          needs $\mathbb{G}_1$, $\mathbb{G}_2$, and $\mathbb{G}_T$.
+
+    \item \textbf{Recursive SNARK stacks:} Use \textbf{BLS12-377}
+          (inner curve in ZEXE/BLS12-378). Use \textbf{BLS12-381} for
+          higher security or Ethereum compatibility; \textbf{BN254}
+          for maximum performance.
+\end{itemize}
+
+% ============================================================
+\section{Summary}
+\label{sec:chapter7-summary}
+% ============================================================
+
+This chapter has benchmarked and compared four polynomial commitment
+schemes across six metrics, three curves, and nine polynomial sizes.
+The main findings are:
+
+\begin{enumerate}
+    \item \textbf{KZG dominates on prover efficiency and proof size.}
+          With Pippenger's MSM, KZG proves in 42\,ms and produces
+          48\,byte proofs on BLS12-381 at $n = 1024$. Its verifier is
+          constant-time (3.8\,ms), making it optimal for deployed
+          SNARK back-ends. The required trusted setup is the only
+          practical limitation.
+
+    \item \textbf{MKZG extends KZG to multilinear polynomials}. It is the correct choice for sumcheck-based proof systems where the polynomial structure is inherently multilinear.
+
+    \item \textbf{Dory is the best transparent scheme for large
+          polynomials.} It achieves $O(\log n)$ verification without a
+          trusted setup, at the cost of large proofs (20\,KB at
+          $n = 1024$) and higher proving latency than KZG.
+
+    \item \textbf{Bulletproofs are limited by $O(n)$ verification.}
+          The 496\,ms verify time at $n = 1024$ on BLS12-381 makes
+          Bulletproofs unsuitable for large polynomials. They remain
+          useful for small $n$ in pairing-free environments.
+
+    \item \textbf{Pippenger's algorithm delivers $5$--$6\times$
+          commit/prove speedup} for KZG and Bulletproofs wherever a
+          single large MSM dominates. It provides no benefit for
+          operations that are inherently sequential (KZG setup) or
+          composed of many small MSMs (Bulletproofs verify).
+
+    \item \textbf{BN254 is $\approx 1.9\times$ faster than BLS12-381}
+          for all schemes and all metrics, with identical algorithmic
+          structure. BLS12-377 and BLS12-381 are nearly equal in
+          performance. Proof sizes on BN254 are $1.5\times$ smaller
+          due to the smaller field.
+
+    \item \textbf{The verification hierarchy} (fastest to slowest at
+          $n = 1024$, BLS12-381) is:
+          KZG (3.8\,ms) $\ll$ MKZG (21.9\,ms) $<$ Dory (95.8\,ms)
+          $\ll$ Bulletproofs (496\,ms).
+          This ordering is stable across all three curves and grows
+          with $n$ in a way that further separates the linear verifier
+          (Bulletproofs) from the logarithmic and constant ones.
+\end{enumerate}
+
+No single scheme dominates on all dimensions simultaneously. The
+correct choice depends on whether a trusted setup is acceptable, what
+polynomial type the application uses, how proof size is weighted
+against verifier latency, and which elliptic curve is mandated by the
+deployment environment. The benchmarks in this chapter provide
+concrete, curve-specific numbers to inform this decision for any
+target application.
