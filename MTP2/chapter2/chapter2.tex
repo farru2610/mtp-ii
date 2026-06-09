@@ -90,6 +90,117 @@ subgroup order matches the base field of the outer curve BW6-761,
 which makes recursive verification efficient.
  
 % ────────────────────────────────────────────────────────────
+\section{Multi-Scalar Multiplication and Pippenger's Algorithm}
+\label{sec:msm-pippenger}
+
+A \emph{multi-scalar multiplication} (MSM) computes the sum
+\begin{equation}
+    \mathrm{MSM}(\mathbf{P}, \mathbf{s})
+    = \sum_{i=0}^{n-1} s_i \cdot P_i
+\end{equation}
+where $P_i \in \mathbb{G}_1$ are curve points and $s_i \in \mathbb{F}_r$
+are scalars. MSM is the dominant cost in nearly every operation of the
+schemes studied in this thesis: KZG commit, MKZG commit and prove,
+Bulletproofs commit, and Dory commit all reduce to one or more MSMs.
+
+\textbf{Naive approach.}
+Computing each $s_i \cdot P_i$ independently using double-and-add costs
+$O(\log p)$ group operations per scalar, giving $O(n \log p)$ total. This
+is wasteful because it treats the $n$ scalar multiplications as unrelated.
+
+\textbf{Pippenger's algorithm.}
+Pippenger's algorithm~\cite{pippenger1976} amortises the cost across all
+$n$ scalar-point pairs by dividing each scalar into $c$-bit windows and
+processing all scalars simultaneously in each window:
+
+\begin{enumerate}
+    \item Choose a window size $c$ (typically $c \approx \lfloor\log_2 n\rfloor / 2$).
+          Divide each scalar $s_i$ into $\lceil\log_2 p / c\rceil$ chunks
+          $s_i^{(0)}, s_i^{(1)}, \ldots$ of $c$ bits each.
+    \item For each window $k$, maintain $2^c$ \emph{buckets}.
+          Add $P_i$ to bucket $s_i^{(k)}$ for each $i$.
+    \item Accumulate each bucket sum $B_j = \sum_{s_i^{(k)} = j} P_i$.
+          Compute the window contribution using Horner's rule on the
+          bucket sums:
+          $W_k = B_1 + (B_1 + B_2) + (B_1 + B_2 + B_3) + \cdots$
+          This requires only $2^c - 2$ additions per window with no
+          doublings.
+    \item Combine window contributions using
+          $\sum_k W_k \cdot 2^{ck}$ via repeated doubling.
+\end{enumerate}
+
+The total cost is $O(n + 2^c \cdot \log p / c)$ group additions plus
+$O(\log p)$ doublings. With the optimal window size this gives an overall
+complexity of $O(n / \log n)$ group operations, compared to $O(n)$ for
+the naive method. In practice this delivers a $5$--$6\times$ speedup at
+$n = 1024$ and the advantage grows logarithmically with $n$.
+
+Both \texttt{arkworks}' \texttt{VariableBaseMSM} (used in KZG, MKZG,
+and Bulletproofs) and the a16z Dory library implement this algorithm.
+All benchmark results in this thesis that involve commit or prove times
+use Pippenger's MSM.
+
+% ────────────────────────────────────────────────────────────
+\section{Interactive Protocols and the Fiat-Shamir Transform}
+\label{sec:fiat-shamir}
+
+\textbf{Interactive proof protocols.}
+Many cryptographic proof systems are defined as interactive protocols
+between a prover $\mathcal{P}$ and a verifier $\mathcal{V}$. The parties
+exchange multiple rounds of messages; the verifier sends fresh random
+\emph{challenges} at each round, and soundness relies on the adversary not
+being able to predict these challenges before committing to their messages.
+
+The simplest class is the \emph{$\Sigma$-protocol} (sigma protocol), which
+has exactly three moves:
+\begin{enumerate}
+    \item \textbf{Commit:} $\mathcal{P}$ sends a commitment $A$.
+    \item \textbf{Challenge:} $\mathcal{V}$ replies with a uniformly
+          random challenge $e \xleftarrow{\$} \mathbb{F}_r$.
+    \item \textbf{Response:} $\mathcal{P}$ sends a response $z$ that
+          $\mathcal{V}$ checks against $A$ and $e$.
+\end{enumerate}
+Bulletproofs and Dory generalise this to $O(\log n)$ rounds by repeatedly
+halving the problem, with each round following the same commit-challenge-respond
+structure.
+
+\textbf{Why interaction is impractical.}
+An interactive proof requires a live communication channel: $\mathcal{V}$
+must be online to issue fresh challenges after seeing each prover message.
+For blockchain applications, distributed verification, or simply transferable
+proofs, this is unacceptable. A proof must be a self-contained object that
+any verifier can check at any time without interaction.
+
+\textbf{The Fiat-Shamir heuristic.}
+Fiat and Shamir~\cite{fiat1987} observed that the verifier's role is to
+supply an \emph{unpredictable} challenge. If the prover is computationally
+bound, a cryptographic hash function applied to all messages seen so far
+serves the same purpose:
+\begin{equation}
+    e^{(k)} = H\!\left(\text{all messages up to round } k\right)
+\end{equation}
+where $H$ is a hash function modelled as a \emph{random oracle}. Because
+the prover cannot predict $H$'s output before committing, the reduction to
+the underlying hardness assumption still holds in the random oracle model.
+
+The transformation is applied as follows. A \emph{transcript} object
+accumulates every prover message as a byte string. Before starting each
+new round, the challenge is derived by hashing the transcript; this
+challenge is then appended to the transcript so subsequent challenges also
+depend on it. The resulting proof is a flat sequence of round messages
+that the verifier can replay, recomputing each challenge via the same
+hash, without any interaction.
+
+\textbf{Instantiation in this thesis.}
+Bulletproofs (Chapter~\ref{chap:bulletproofs}) use SHA-256 as the hash
+function, hashing the full transcript in field-element encoding at each of
+the $\log_2 n$ rounds. Dory (Chapter~\ref{chap:dory}) uses Blake2b, as
+implemented in the a16z reference library. Both produce a single
+transferable proof object. The security of both constructions holds in the
+random oracle model under the same discrete-logarithm assumptions as the
+interactive versions.
+
+% ────────────────────────────────────────────────────────────
 \section{Polynomial Commitment Schemes}
 \label{sec:pcs-overview}
  
