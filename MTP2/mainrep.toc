@@ -1,4 +1,6 @@
+\contentsline {chapter}{Declaration}{i}{chapter*.2}%
 \contentsline {chapter}{Acknowledgements}{ii}{section*.3}%
+\contentsline {chapter}{Abstract}{iii}{section*.5}%
 \contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}%
 \contentsline {section}{\numberline {1.1}Motivation}{1}{section.1.1}%
 \contentsline {section}{\numberline {1.2}Objectives}{1}{section.1.2}%
@@ -13,77 +15,52 @@
 \contentsline {section}{\numberline {3.1}KZG Construction}{7}{section.3.1}%
 \contentsline {section}{\numberline {3.2}Pseudocode}{8}{section.3.2}%
 \contentsline {section}{\numberline {3.3}Implementation}{9}{section.3.3}%
-\contentsline {section}{\numberline {3.4}Benchmark Setup}{9}{section.3.4}%
-\contentsline {section}{\numberline {3.5}Benchmark Results}{9}{section.3.5}%
-\contentsline {subsection}{\numberline {3.5.1}Proof Size}{9}{subsection.3.5.1}%
-\contentsline {subsection}{\numberline {3.5.2}Base Operation Costs}{9}{subsection.3.5.2}%
-\contentsline {subsection}{\numberline {3.5.3}Setup Time}{10}{subsection.3.5.3}%
-\contentsline {subsection}{\numberline {3.5.4}Commit and Prove Time}{10}{subsection.3.5.4}%
-\contentsline {subsection}{\numberline {3.5.5}Verification Time}{11}{subsection.3.5.5}%
-\contentsline {section}{\numberline {3.6}Discussion and Summary}{11}{section.3.6}%
+\contentsline {section}{\numberline {3.4}Benchmark Results}{9}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Discussion and Summary}{12}{section.3.5}%
 \contentsline {chapter}{\numberline {4}Multilinear KZG Polynomial Commitment}{13}{chapter.4}%
 \contentsline {section}{\numberline {4.1}Multilinear KZG Construction}{13}{section.4.1}%
 \contentsline {subsection}{\numberline {4.1.1}Bookkeeping Table for Witness Computation}{14}{subsection.4.1.1}%
 \contentsline {section}{\numberline {4.2}Pseudocode}{15}{section.4.2}%
 \contentsline {section}{\numberline {4.3}Implementation}{16}{section.4.3}%
-\contentsline {section}{\numberline {4.4}Benchmark Setup}{16}{section.4.4}%
-\contentsline {section}{\numberline {4.5}Benchmark Results}{16}{section.4.5}%
-\contentsline {subsection}{\numberline {4.5.1}Base Operations and Proof Size}{16}{subsection.4.5.1}%
-\contentsline {subsection}{\numberline {4.5.2}Setup and Commit Time}{17}{subsection.4.5.2}%
-\contentsline {subsection}{\numberline {4.5.3}Prove and Verify Time}{17}{subsection.4.5.3}%
-\contentsline {section}{\numberline {4.6}Discussion and Summary}{18}{section.4.6}%
+\contentsline {section}{\numberline {4.4}Benchmark Results}{16}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Discussion and Summary}{18}{section.4.5}%
 \contentsline {chapter}{\numberline {5}Bulletproofs}{19}{chapter.5}%
 \contentsline {section}{\numberline {5.1}Bulletproofs Construction}{19}{section.5.1}%
-\contentsline {subsection}{\numberline {5.1.1}Proof Size}{20}{subsection.5.1.1}%
 \contentsline {section}{\numberline {5.2}Pseudocode}{21}{section.5.2}%
 \contentsline {section}{\numberline {5.3}Implementation and Optimisations}{21}{section.5.3}%
 \contentsline {subsection}{\numberline {5.3.1}Fiat-Shamir via SHA-256}{22}{subsection.5.3.1}%
 \contentsline {subsection}{\numberline {5.3.2}Pippenger's MSM for Inner Products}{22}{subsection.5.3.2}%
-\contentsline {subsection}{\numberline {5.3.3}Proof Size Calculation}{22}{subsection.5.3.3}%
-\contentsline {section}{\numberline {5.4}Benchmark Setup}{23}{section.5.4}%
-\contentsline {section}{\numberline {5.5}Benchmark Results}{23}{section.5.5}%
-\contentsline {subsection}{\numberline {5.5.1}Base Operations and Proof Size}{23}{subsection.5.5.1}%
-\contentsline {subsection}{\numberline {5.5.2}Setup and Commit Time}{24}{subsection.5.5.2}%
-\contentsline {subsection}{\numberline {5.5.3}Prove and Verify Time}{24}{subsection.5.5.3}%
-\contentsline {section}{\numberline {5.6}Discussion and Summary}{25}{section.5.6}%
-\contentsline {subsection}{\numberline {5.6.1}Fiat-Shamir: Theory vs Implementation}{25}{subsection.5.6.1}%
-\contentsline {subsection}{\numberline {5.6.2}MSM Optimisation Impact}{25}{subsection.5.6.2}%
-\contentsline {subsection}{\numberline {5.6.3}Transparency vs Verification Cost}{25}{subsection.5.6.3}%
-\contentsline {subsection}{\numberline {5.6.4}Curve Comparison}{25}{subsection.5.6.4}%
-\contentsline {chapter}{\numberline {6}Dory Polynomial Commitment}{27}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Dory Construction}{27}{section.6.1}%
-\contentsline {subsection}{\numberline {6.1.1}Polynomial Representation}{27}{subsection.6.1.1}%
-\contentsline {subsection}{\numberline {6.1.2}Transparent Setup}{27}{subsection.6.1.2}%
-\contentsline {subsection}{\numberline {6.1.3}Commitment}{28}{subsection.6.1.3}%
-\contentsline {subsection}{\numberline {6.1.4}Evaluation Proof}{28}{subsection.6.1.4}%
-\contentsline {subsection}{\numberline {6.1.5}Reduce-and-Fold (Protocol 14)}{29}{subsection.6.1.5}%
-\contentsline {subsection}{\numberline {6.1.6}Proof Size}{29}{subsection.6.1.6}%
-\contentsline {section}{\numberline {6.2}Pseudocode}{30}{section.6.2}%
-\contentsline {section}{\numberline {6.3}Implementation}{31}{section.6.3}%
-\contentsline {subsection}{\numberline {6.3.1}Fiat-Shamir via Blake2b}{31}{subsection.6.3.1}%
-\contentsline {subsection}{\numberline {6.3.2}First-Round MSM+Pair Optimisation}{31}{subsection.6.3.2}%
-\contentsline {subsection}{\numberline {6.3.3}Proof Size Calculation}{32}{subsection.6.3.3}%
-\contentsline {section}{\numberline {6.4}Benchmark Setup}{32}{section.6.4}%
-\contentsline {section}{\numberline {6.5}Benchmark Results}{32}{section.6.5}%
-\contentsline {subsection}{\numberline {6.5.1}Base Operations and Proof Size}{32}{subsection.6.5.1}%
-\contentsline {subsection}{\numberline {6.5.2}Setup and Commit Time}{33}{subsection.6.5.2}%
-\contentsline {subsection}{\numberline {6.5.3}Prove and Verify Time}{34}{subsection.6.5.3}%
-\contentsline {section}{\numberline {6.6}Discussion and Summary}{35}{section.6.6}%
-\contentsline {subsection}{\numberline {6.6.1}Transparency vs Verification Cost}{35}{subsection.6.6.1}%
-\contentsline {subsection}{\numberline {6.6.2}Verifier Cost Scaling}{35}{subsection.6.6.2}%
-\contentsline {subsection}{\numberline {6.6.3}Prover Cost}{35}{subsection.6.6.3}%
-\contentsline {subsection}{\numberline {6.6.4}Curve Comparison}{35}{subsection.6.6.4}%
-\contentsline {chapter}{\numberline {7}Comparative Analysis}{37}{chapter.7}%
-\contentsline {section}{\numberline {7.1}Setup Time}{37}{section.7.1}%
-\contentsline {section}{\numberline {7.2}Commitment Time}{38}{section.7.2}%
-\contentsline {section}{\numberline {7.3}Proving Time}{39}{section.7.3}%
-\contentsline {section}{\numberline {7.4}Verification Time}{40}{section.7.4}%
-\contentsline {section}{\numberline {7.5}Proof Size}{41}{section.7.5}%
-\contentsline {section}{\numberline {7.6}Impact of Pippenger's MSM Optimisation}{42}{section.7.6}%
-\contentsline {subsection}{\numberline {7.6.1}Impact on KZG}{42}{subsection.7.6.1}%
-\contentsline {subsection}{\numberline {7.6.2}Impact on Bulletproofs}{43}{subsection.7.6.2}%
-\contentsline {section}{\numberline {7.7}Curve Comparison}{44}{section.7.7}%
+\contentsline {subsection}{\numberline {5.3.3}Proof Size Calculation}{23}{subsection.5.3.3}%
+\contentsline {section}{\numberline {5.4}Benchmark Results}{23}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Discussion and Summary}{26}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}Fiat-Shamir: Theory vs Implementation}{26}{subsection.5.5.1}%
+\contentsline {subsection}{\numberline {5.5.2}MSM Optimisation Impact}{26}{subsection.5.5.2}%
+\contentsline {subsection}{\numberline {5.5.3}Transparency vs Verification Cost}{26}{subsection.5.5.3}%
+\contentsline {subsection}{\numberline {5.5.4}Curve Comparison}{26}{subsection.5.5.4}%
+\contentsline {chapter}{\numberline {6}Dory Polynomial Commitment}{28}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Dory Construction}{28}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Pseudocode}{31}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Implementation}{32}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Fiat-Shamir via Blake2b}{32}{subsection.6.3.1}%
+\contentsline {subsection}{\numberline {6.3.2}First-Round MSM+Pair Optimisation}{32}{subsection.6.3.2}%
+\contentsline {subsection}{\numberline {6.3.3}Proof Size Calculation}{33}{subsection.6.3.3}%
+\contentsline {section}{\numberline {6.4}Benchmark Results}{33}{section.6.4}%
+\contentsline {section}{\numberline {6.5}Discussion and Summary}{36}{section.6.5}%
+\contentsline {subsection}{\numberline {6.5.1}Transparency vs Verification Cost}{36}{subsection.6.5.1}%
+\contentsline {subsection}{\numberline {6.5.2}Verifier Cost Scaling}{36}{subsection.6.5.2}%
+\contentsline {subsection}{\numberline {6.5.3}Prover Cost}{37}{subsection.6.5.3}%
+\contentsline {subsection}{\numberline {6.5.4}Curve Comparison}{37}{subsection.6.5.4}%
+\contentsline {chapter}{\numberline {7}Comparative Analysis}{38}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Setup Time}{38}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Commitment Time}{39}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Proving Time}{40}{section.7.3}%
+\contentsline {section}{\numberline {7.4}Verification Time}{41}{section.7.4}%
+\contentsline {section}{\numberline {7.5}Proof Size}{42}{section.7.5}%
+\contentsline {section}{\numberline {7.6}Impact of Pippenger's MSM Optimisation}{43}{section.7.6}%
+\contentsline {subsection}{\numberline {7.6.1}Impact on KZG}{43}{subsection.7.6.1}%
+\contentsline {subsection}{\numberline {7.6.2}Impact on Bulletproofs}{44}{subsection.7.6.2}%
+\contentsline {section}{\numberline {7.7}Curve Comparison}{45}{section.7.7}%
 \contentsline {section}{\numberline {7.8}Overall Scheme Comparison}{46}{section.7.8}%
-\contentsline {section}{\numberline {7.9}Practical Recommendations}{46}{section.7.9}%
-\contentsline {section}{\numberline {7.10}Summary}{47}{section.7.10}%
-\contentsline {chapter}{References}{49}{section*.6}%
+\contentsline {section}{\numberline {7.9}Practical Recommendations}{48}{section.7.9}%
+\contentsline {section}{\numberline {7.10}Summary}{49}{section.7.10}%
+\contentsline {chapter}{References}{51}{section*.8}%

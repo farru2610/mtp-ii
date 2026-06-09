@@ -30,7 +30,7 @@ Its multilinear extension is:
     = \prod_{i=1}^{\mu}
       \bigl( X_i b_i + (1 - X_i)(1 - b_i) \bigr)
 \end{equation}
-
+\\
 \textbf{Trusted Setup:}
 
 The SRS is built from a secret vector $\mathbf{r} \in \mathbb{F}_r^\mu$:
@@ -40,14 +40,14 @@ The SRS is built from a secret vector $\mathbf{r} \in \mathbb{F}_r^\mu$:
     \item $\mathsf{g2\_r}[i] = r_i \cdot g_2$ for $i = 0,\ldots,\mu-1$
           \quad ($\mu$ elements)
 \end{itemize}
-
+\\
 \textbf{Commitment:}
 The commitment is an MSM of size $2^\mu$:
 \begin{equation}
     C = \sum_{\mathbf{b}} \hat{f}(\mathbf{b}) \cdot \chi_{\mathbf{b}}(\mathbf{r}) \cdot g_1
       = [\tilde{f}(\mathbf{r})]_1
 \end{equation}
-
+\\
 \textbf{Proof:}
 To prove $\tilde{f}(\mathbf{z}) = v$, the prover uses the identity:
 \begin{equation}
@@ -55,7 +55,7 @@ To prove $\tilde{f}(\mathbf{z}) = v$, the prover uses the identity:
     = \sum_{i=0}^{\mu-1} (X_i - z_i) \cdot q_i(X_{i+1}, \ldots, X_{\mu-1})
 \end{equation}
 and commits to each quotient: $\pi_i = [\tilde{q}_i(\mathbf{r})]_1$.
-
+\\
 \textbf{Verification:}
 The verifier checks (in additive $\mathbb{G}_T$ notation):
 \begin{equation}

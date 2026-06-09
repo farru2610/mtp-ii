@@ -87,38 +87,37 @@ The main contributions of this work are:
  
 \section{Thesis Organisation}
 
-\textbf{Chapter~\ref{chap:background}:Background} introduces the
+\textbf{Chapter~\ref{chap:background}} introduces the
 mathematical foundations: finite fields, elliptic curve arithmetic,
 bilinear pairings, and the three curves used throughout this work
 (BLS12-381, BN254, BLS12-377). It also defines polynomial commitment
 schemes formally and states the security properties each construction
 must satisfy.
-
-\textbf{Chapter~\ref{chap:kzg}:KZG Polynomial Commitment} presents
+\\
+\textbf{Chapter~\ref{chap:kzg}} presents
 the KZG scheme for univariate polynomials. It covers the construction,
 pseudocode, Rust implementation, and benchmark results across all three
 curves, including the impact of Pippenger's MSM optimisation on commit
 and prove time.
-
-\textbf{Chapter~\ref{chap:mkzg}:Multilinear KZG Polynomial
-Commitment} extends KZG to multilinear polynomials. It describes the
+\\
+\textbf{Chapter~\ref{chap:mkzg}} extends KZG to multilinear polynomials. It describes the
 tensor-product SRS construction, the bookkeeping-table witness
 algorithm, and benchmarks showing how setup cost grows exponentially
 in the number of variables $\mu$.
-
-\textbf{Chapter~\ref{chap:bulletproofs}:Bulletproofs} describes
+\\
+\textbf{Chapter~\ref{chap:bulletproofs}} describes
 the transparent, pairing-free commitment scheme based on inner-product
 arguments. The chapter covers the recursive halving construction,
 Pippenger optimisation for commit and prove, and the $O(n)$
 verification cost that limits its practical range.
-
-\textbf{Chapter~\ref{chap:dory}:Dory Polynomial Commitment}
+\\
+\textbf{Chapter~\ref{chap:dory}}
 presents the Dory scheme, which achieves $O(\log n)$ verification
 without a trusted setup using structured $\mathbb{G}_T$ reductions.
 The a16z reference implementation is used and benchmarked across all
 three curves.
-
-\textbf{Chapter~\ref{chap:comparison}:Comparative Analysis}
+\\
+\textbf{Chapter~\ref{chap:comparison}}
 brings all four schemes together. It compares setup, commit, prove,
 verify, and proof-size metrics side by side, analyses the effect of
 Pippenger's algorithm and curve choice, and provides concrete guidance

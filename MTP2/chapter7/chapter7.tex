@@ -304,10 +304,7 @@ linear scaling.
 
 Table~\ref{tab:proofsize-all} gives proof sizes across all schemes.
 The four schemes span a $433\times$ range at $n = 1024$ on BLS12-381:
-\[
-\text{KZG}\ (48\,\text{B})\ \ll\ \text{MKZG}\ (480\,\text{B})\ <\
-\text{Bulletproofs}\ (2{,}216\,\text{B})\ \ll\ \text{Dory}\ (20{,}784\,\text{B}).
-\]
+
 
 \begin{table}[H]
 \centering
@@ -611,7 +608,7 @@ complementing the tabular summaries above.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{"../Final Graphs/plots/BLS12381_combined"}
+\includegraphics[width=\textwidth]{"chapter7/BLS12381_combined.png"}
 \caption{All four schemes on BLS12-381: setup, commit, prove, and verify
 time (ms, log scale) vs.\ polynomial size $n$.}
 \label{fig:combined-bls12381}
@@ -619,7 +616,7 @@ time (ms, log scale) vs.\ polynomial size $n$.}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{"../Final Graphs/plots/BN254_combined"}
+\includegraphics[width=\textwidth]{"chapter7/BN254_combined.png"}
 \caption{All four schemes on BN254: setup, commit, prove, and verify
 time (ms, log scale) vs.\ polynomial size $n$.}
 \label{fig:combined-bn254}

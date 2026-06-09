@@ -30,21 +30,21 @@ secret value $\tau \in \mathbb{F}_r$ (the toxic waste):
 where $[x]_i$ means the generator of $\mathbb{G}_i$ multiplied by
 $x$. Once the SRS is generated, $\tau$ must be discarded. In
 practice this is done through a multi-party ceremony.
-
+\\
 \textbf{Commitment:}
 
 Given $f(X) = \sum_{i=0}^{d} a_i X^i$, the commitment is:
 \begin{equation}
     C = \sum_{i=0}^{d} a_i \cdot [\tau^i]_1 = [f(\tau)]_1
 \end{equation}
-
+\\
 \textbf{Proof:}
 To prove $f(z) = y$, the prover computes the quotient polynomial
 $q(X) = (f(X) - y) / (X - z)$ and commits to it:
 \begin{equation}
     \pi = [q(\tau)]_1
 \end{equation}
-
+\\
 \textbf{Verification:}
 The verifier checks the following pairing equation:
 \begin{equation}
@@ -139,8 +139,8 @@ since they are degree-independent.
 The proof is always one compressed $\mathbb{G}_1$ point:
 \textbf{48 bytes} for BLS12-381 and BLS12-377, \textbf{32 bytes}
 for BN254, constant at all degrees.
-
-\subsection{Base Operation Costs}
+\\
+\textbf{Base Operation Costs:}
 \begin{table}[H]
 \centering
 \caption{Scalar multiplication and pairing time per curve.}
@@ -157,8 +157,8 @@ Pairing (ms)    & 2.7453 & 1.1441 & 2.0079 \\
 
 BN254 is roughly 3x faster on scalar multiplication and 2.4x faster
 on pairings than BLS12-381, owing to its smaller 254-bit field.
-
-\subsection{Setup Time}
+\\
+\textbf{Setup Time:}
 
 \begin{table}[H]
 \centering
@@ -183,8 +183,8 @@ on pairings than BLS12-381, owing to its smaller 254-bit field.
 
 Setup grows linearly with degree. It is a one-time cost and does not
 repeat per proof.
-
-\subsection{Commit and Prove Time}
+\\
+\textbf{Commit and Prove Time:}
 
 \begin{table}[H]
 \centering
@@ -213,8 +213,8 @@ repeat per proof.
 Commit and prove costs are nearly identical since both are dominated
 by an MSM of the same size. Both grow sub-linearly due to
 Pippenger's algorithm.
-
-\subsection{Verification Time}
+\\
+\textbf{Verification Time:}
 
 \begin{table}[H]
 \centering

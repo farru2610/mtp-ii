@@ -15,10 +15,9 @@ The style file: ieeetr.bst
 Database file #1: mylit.bib
 Warning--entry type for "arkworks" isn't style-file defined
 --line 46 of file mylit.bib
-Warning--I didn't find a database entry for "a16z2022dory"
 You've used 7 entries,
             1876 wiz_defined-function locations,
-            521 strings with 4544 characters,
+            520 strings with 4532 characters,
 and the built_in function-call counts, 1392 in all, are:
 = -- 104
 > -- 68
@@ -57,4 +56,4 @@ warning$ -- 0
 while$ -- 10
 width$ -- 8
 write$ -- 58
-(There were 2 warnings)
+(There was 1 warning)
